@@ -24,8 +24,6 @@ fn main_menu_handler(char: u8, state: *MenuState) void {
     }
 }
 
-fn config_menu_handler(char: u8, state: *MenuState, configs: []Config) void {}
-
 pub fn event_loop(io: Io, allocator: Allocator) !void {
     const configs = try get_configs(io, allocator);
     defer allocator.free(configs);
@@ -60,7 +58,7 @@ pub fn event_loop(io: Io, allocator: Allocator) !void {
                         std.debug.print("Installing all dots\n", .{});
                         break :config;
                     }
-                    config_menu_handler(line[0], &state);
+                    // config_menu_handler(line[0], &state);
                 }
             },
             else => {},

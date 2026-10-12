@@ -10,6 +10,8 @@ const Allocator = std.mem.Allocator;
 const HOME_DIR = "configs/home";
 const CONFIG_DIR = "configs/configs";
 
+pub var home_var: ?[]u8 = null;
+
 const InstallLocation = enum(u8) {
     HOME,
     CONFIG,
@@ -24,16 +26,30 @@ const InstallLocation = enum(u8) {
 
 pub const Config = struct {
     name: []const u8,
+    absolute_path: []const u8,
     location: InstallLocation = .CONFIG,
+    is_directory: bool = false,
 
-    fn init(name: []const u8, location: InstallLocation, allocator: Allocator) !Config {
-        return .{ .name = try allocator.dupe(u8, name), .location = location };
+    fn init(name: []const u8, location: InstallLocation, absolute_path: []const u8, is_directory: bool, allocator: Allocator) !Config {
+        return .{ .name = try allocator.dupe(u8, name), .location = location, .absolute_path = try allocator.dupe(u8, absolute_path), .is_directory = is_directory };
     }
 
     pub fn deinit(self: *Config, allocator: Allocator) void {
         allocator.free(self.name);
     }
 };
+
+pub fn init_home_var(home: []const u8, allocator: Allocator) !void {
+    home_var = try allocator.dupe(u8, home);
+}
+
+pub fn install_config(config: Config, io: Io, allocator: Allocator) !void {
+    if (home_var == null) return error.HomeNotSet;
+    const location = if (config.location == .HOME) "" else ".config";
+    const config_path = try std.mem.join(allocator, "/", &.{ home_var, location });
+    const config_dir = try Dir.openDirAbsolute(io, config_path, .{ .iterate = true });
+    try config_dir.symLink(io, config.name, config.absolute_path, .{ .is_directory = config.is_directory });
+}
 
 fn get_home_configs(list: *std.ArrayList(Config), io: Io, root: Dir, allocator: Allocator) !void {
     var home_dir = try root.openDir(io, HOME_DIR, .{ .iterate = true });
@@ -42,24 +58,32 @@ fn get_home_configs(list: *std.ArrayList(Config), io: Io, root: Dir, allocator: 
     var iterator: Dir.Iterator = home_dir.iterate();
     while (try iterator.next(io)) |entry| {
         if (entry.kind != .file and entry.kind != .directory) continue;
-        const file_name = entry.name;
 
-        var config: Config = try .init(file_name, .HOME, allocator);
+        const file_name = entry.name;
+        const absolute_path = try home_dir.realPathFileAlloc(io, file_name, allocator);
+        defer allocator.free(absolute_path);
+        const is_directory = entry.kind == .directory;
+
+        var config: Config = try .init(file_name, .HOME, absolute_path, is_directory, allocator);
         errdefer config.deinit(allocator);
         try list.append(allocator, config);
     }
 }
 
 fn get_config_configs(list: *std.ArrayList(Config), io: Io, root: Dir, allocator: Allocator) !void {
-    var home_dir = try root.openDir(io, CONFIG_DIR, .{ .iterate = true });
-    defer home_dir.close(io);
+    var config_dir = try root.openDir(io, CONFIG_DIR, .{ .iterate = true });
+    defer config_dir.close(io);
 
-    var iterator: Dir.Iterator = home_dir.iterate();
+    var iterator: Dir.Iterator = config_dir.iterate();
     while (try iterator.next(io)) |entry| {
         if (entry.kind != .file and entry.kind != .directory) continue;
-        const file_name = entry.name;
 
-        var config: Config = try .init(file_name, .CONFIG, allocator);
+        const file_name = entry.name;
+        const absolute_path = try config_dir.realPathFileAlloc(io, file_name, allocator);
+        defer allocator.free(absolute_path);
+        const is_directory = entry.kind == .directory;
+
+        var config: Config = try .init(file_name, .CONFIG, absolute_path, is_directory, allocator);
         errdefer config.deinit(allocator);
         try list.append(allocator, config);
     }
