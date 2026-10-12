@@ -8,6 +8,8 @@ const event_loop = @import("menu_controller.zig").event_loop;
 
 pub fn main(init: std.process.Init) !void {
     init_log(init.io);
+    const term = init.environ_map.get("TERM") orelse "";
+    @import("menu_renderer.zig").init(init.io, init.environ_map.get("NO_COLOR") != null, std.mem.eql(u8, term, "dumb"));
     const env = init.environ_map.get("HOME") orelse return error.HomeNotSet;
 
     try init_home_var(env, init.arena.allocator());

@@ -68,7 +68,7 @@ pub fn event_loop(io: Io, allocator: Allocator) !void {
 
         render_menu(state, configs, commands);
 
-        std.debug.print("> ", .{});
+        @import("menu_renderer.zig").render_prompt();
         const eol = try reader.takeDelimiter('\n') orelse break;
         const line = std.mem.trim(u8, eol, "\r");
 
