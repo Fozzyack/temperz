@@ -1,10 +1,11 @@
 const std = @import("std");
 const init_log = @import("log.zig").init_log;
 const log = @import("log.zig").log;
-const render_menu = @import("menu.zig").render_menu;
 const Config = @import("configs.zig").Config;
 const get_configs = @import("configs.zig").get_configs;
 const get_commands = @import("install_deps.zig").get_commands;
+
+const render_menu = @import("menu.zig").render_menu;
 
 pub fn main(init: std.process.Init) !void {
     init_log(init.io);
@@ -24,6 +25,4 @@ pub fn main(init: std.process.Init) !void {
     for (commands) |command| {
         std.debug.print("command: {s}", .{command});
     }
-
-    // render_menu();
 }

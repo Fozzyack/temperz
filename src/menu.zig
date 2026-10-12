@@ -1,4 +1,5 @@
 const std = @import("std");
+const MenuState = @import("menu_state.zig").MenuState;
 
 const Io = std.Io;
 
@@ -28,9 +29,12 @@ fn render_main_options() void {
 
 fn render_install_menu() void {}
 
-pub fn render_menu() void {
+pub fn render_menu(state: MenuState) void {
     clear_screan();
     render_title();
     render_divider();
-    render_main_options();
+    switch (state) {
+        .MAIN => render_main_options(),
+        .INSTALL => render_install_menu(),
+    }
 }
