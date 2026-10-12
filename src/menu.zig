@@ -25,9 +25,10 @@ fn clear_screan() void {
 fn render_main_options() void {
     std.debug.print(" Options\n", .{});
     std.debug.print(" [1] Install Configs\n", .{});
-    std.debug.print(" [2] Install Deps\n", .{});
-    std.debug.print(" [3] Git Pull\n", .{});
-    std.debug.print(" [4] Exit\n", .{});
+    std.debug.print(" [2] Remove Configs\n", .{});
+    std.debug.print(" [3] Install Deps\n", .{});
+    std.debug.print(" [4] Git Pull\n", .{});
+    std.debug.print(" [5] Exit\n", .{});
 }
 
 fn render_config_menu(configs: []Config) void {
@@ -52,7 +53,7 @@ pub fn render_menu(state: MenuState, configs: []Config, commands: [][]u8) void {
     render_divider();
     switch (state) {
         .MAIN => render_main_options(),
-        .CONFIGS => render_config_menu(configs),
+        .CONFIGS_INSTALL => render_config_menu(configs),
         .INSTALL => render_command_menu(commands),
         else => std.debug.print("invalid state\n", .{}),
     }

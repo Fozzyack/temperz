@@ -19,7 +19,7 @@ const File = std.Io.File;
 
 fn main_menu_handler(char: u8, state: *MenuState) void {
     switch (char) {
-        '1' => state.* = .CONFIGS,
+        '1' => state.* = .CONFIGS_INSTALL,
         '2' => state.* = .INSTALL,
         '3' => state.* = .GIT,
         '4' => state.* = .EXIT,
@@ -67,7 +67,7 @@ pub fn event_loop(io: Io, allocator: Allocator) !void {
                 }
                 main_menu_handler(line[0], &state);
             },
-            .CONFIGS => {
+            .CONFIGS_INSTALL => {
                 if (line.len == 0) {
                     try install_configs(configs, io, allocator);
                 } else {
