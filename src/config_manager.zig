@@ -1,18 +1,16 @@
 const std = @import("std");
 
 const Io = std.Io;
-const File = Io.File;
 const Dir = Io.Dir;
 const mem = std.mem;
-
 const Allocator = std.mem.Allocator;
+
+const log = @import("logger.zig").log;
 
 const HOME_DIR = "configs/home";
 const CONFIG_DIR = "configs/configs";
 
 pub var home_var: ?[]u8 = null;
-
-const log = @import("log.zig").log;
 
 const InstallLocation = enum(u8) {
     HOME,

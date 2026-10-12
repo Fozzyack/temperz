@@ -1,26 +1,25 @@
-const render_menu = @import("menu.zig").render_menu;
-const MenuState = @import("menu_state.zig").MenuState;
-
-const get_configs = @import("configs.zig").get_configs;
-const install_config = @import("configs.zig").install_config;
-const install_configs = @import("configs.zig").install_configs;
-const delete_config = @import("configs.zig").delete_config;
-const delete_configs = @import("configs.zig").delete_configs;
-const get_commands = @import("install_deps.zig").get_commands;
-const free_commands = @import("install_deps.zig").free_commands;
-const install_command = @import("install_deps.zig").install_command;
-const install_commands = @import("install_deps.zig").install_commands;
-const git_pull = @import("git.zig").git_pull;
-
-const Config = @import("configs.zig").Config;
-
 const std = @import("std");
 
+const Io = std.Io;
 const Allocator = std.mem.Allocator;
 
-const Io = std.Io;
-const Dir = std.Io.Dir;
-const File = std.Io.File;
+const config_manager = @import("config_manager.zig");
+const Config = config_manager.Config;
+const get_configs = config_manager.get_configs;
+const install_config = config_manager.install_config;
+const install_configs = config_manager.install_configs;
+const delete_config = config_manager.delete_config;
+const delete_configs = config_manager.delete_configs;
+
+const dependencies = @import("dependency_installer.zig");
+const get_commands = dependencies.get_commands;
+const free_commands = dependencies.free_commands;
+const install_command = dependencies.install_command;
+const install_commands = dependencies.install_commands;
+
+const git_pull = @import("git_sync.zig").git_pull;
+const render_menu = @import("menu_renderer.zig").render_menu;
+const MenuState = @import("menu_state.zig").MenuState;
 
 fn main_menu_handler(char: u8, state: *MenuState) void {
     switch (char) {

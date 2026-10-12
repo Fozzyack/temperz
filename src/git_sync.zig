@@ -1,7 +1,8 @@
 const std = @import("std");
-const log = @import("log.zig").log;
 
 const Io = std.Io;
+
+const log = @import("logger.zig").log;
 
 pub fn git_pull(io: Io) !void {
     try log("Pulling Lateset Changes\n", .{});

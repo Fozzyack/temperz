@@ -13,7 +13,7 @@ pub fn build(b: *std.Build) void {
 
     const tests = b.addTest(.{
         .root_module = b.createModule(.{
-            .root_source_file = b.path("src/configs.zig"),
+            .root_source_file = b.path("src/config_manager.zig"),
             .target = b.graph.host,
         }),
     });

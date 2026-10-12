@@ -1,10 +1,10 @@
 const std = @import("std");
 
-const init_log = @import("log.zig").init_log;
-const event_loop = @import("menu_controller.zig").event_loop;
+const configs = @import("config_manager.zig");
+const init_home_var = configs.init_home_var;
 
-const configs = @import("configs.zig");
-const init_home_var = @import("configs.zig").init_home_var;
+const init_log = @import("logger.zig").init_log;
+const event_loop = @import("menu_controller.zig").event_loop;
 
 pub fn main(init: std.process.Init) !void {
     init_log(init.io);

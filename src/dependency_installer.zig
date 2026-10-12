@@ -1,10 +1,8 @@
 const std = @import("std");
 
 const Io = std.Io;
-const Dir = std.Io.Dir;
-
+const Dir = Io.Dir;
 const mem = std.mem;
-
 const Allocator = std.mem.Allocator;
 
 const BUFFER_SIZE: usize = 4096;

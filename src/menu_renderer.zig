@@ -1,8 +1,7 @@
-const MenuState = @import("menu_state.zig").MenuState;
-const Config = @import("configs.zig").Config;
-
 const std = @import("std");
-const Io = std.Io;
+
+const Config = @import("config_manager.zig").Config;
+const MenuState = @import("menu_state.zig").MenuState;
 
 fn render_title() void {
     const title =
