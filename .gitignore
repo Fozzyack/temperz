@@ -3,3 +3,6 @@ zig-out/
 *.out
 *.exe
 *.o
+
+# testing
+configs/
