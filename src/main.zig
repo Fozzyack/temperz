@@ -8,11 +8,5 @@ const get_configs = @import("configs.zig").get_configs;
 pub fn main(init: std.process.Init) !void {
     init_log(init.io);
 
-    const configs: []Config = try get_configs(init.io, init.arena.allocator());
-    defer init.arena.allocator().free(configs);
-    for (configs) |*config| {
-        std.debug.print("{s}\n", .{config.*.name});
-    }
-
     // render_menu();
 }
