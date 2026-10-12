@@ -31,12 +31,13 @@ fn render_main_options() void {
     std.debug.print(" [5] Exit\n", .{});
 }
 
-fn render_config_menu(configs: []Config) void {
+fn render_config_menu(configs: []Config, is_delete: bool) void {
+    if (is_delete) std.debug.print(" Delete Configs", .{}) else std.debug.print(" Install Configs", .{});
     std.debug.print(" Options\n", .{});
     for (configs, 1..) |config, idx| {
         std.debug.print(" [{d}]: {s}\n", .{ idx, config.name });
     }
-    std.debug.print(" Leave blank to install all\n", .{});
+    if (is_delete) std.debug.print(" Leave blank to delete all\n", .{}) else std.debug.print(" Leave blank to install all\n", .{});
 }
 
 fn render_command_menu(commands: [][]u8) void {
@@ -53,7 +54,8 @@ pub fn render_menu(state: MenuState, configs: []Config, commands: [][]u8) void {
     render_divider();
     switch (state) {
         .MAIN => render_main_options(),
-        .CONFIGS_INSTALL => render_config_menu(configs),
+        .CONFIGS_INSTALL => render_config_menu(configs, false),
+        .CONFIGS_DELETE => render_config_menu(configs, true),
         .INSTALL => render_command_menu(commands),
         else => std.debug.print("invalid state\n", .{}),
     }
