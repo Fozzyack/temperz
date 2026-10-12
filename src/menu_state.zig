@@ -1,1 +1,1 @@
-pub const MenuState = enum(u8) { MAIN, CONFIGS_INSTALL, CONFIGS_DELETE, INSTALL, GIT, EXIT };
+pub const MenuState = enum(u8) { MAIN, CONFIGS_INSTALL, CONFIGS_DELETE, INSTALL_DEPS, GIT_PULL, EXIT };

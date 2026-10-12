@@ -7,6 +7,10 @@ const install_configs = @import("configs.zig").install_configs;
 const delete_config = @import("configs.zig").delete_config;
 const delete_configs = @import("configs.zig").delete_configs;
 const get_commands = @import("install_deps.zig").get_commands;
+const free_commands = @import("install_deps.zig").free_commands;
+const install_command = @import("install_deps.zig").install_command;
+const install_commands = @import("install_deps.zig").install_commands;
+const git_pull = @import("git.zig").git_pull;
 
 const Config = @import("configs.zig").Config;
 
@@ -22,8 +26,8 @@ fn main_menu_handler(char: u8, state: *MenuState) void {
     switch (char) {
         '1' => state.* = .CONFIGS_INSTALL,
         '2' => state.* = .CONFIGS_DELETE,
-        '3' => state.* = .INSTALL,
-        '4' => state.* = .GIT,
+        '3' => state.* = .INSTALL_DEPS,
+        '4' => state.* = .GIT_PULL,
         '5' => state.* = .EXIT,
         else => std.debug.print("invalid option\n", .{}),
     }
@@ -54,7 +58,7 @@ pub fn event_loop(io: Io, allocator: Allocator) !void {
     defer allocator.free(configs);
 
     const commands = try get_commands(io, allocator);
-    defer allocator.free(commands);
+    defer free_commands(commands, allocator);
 
     var buffer: [1024]u8 = undefined;
     var stdin_reader = std.Io.File.stdin().readerStreaming(io, &buffer);
@@ -93,6 +97,31 @@ pub fn event_loop(io: Io, allocator: Allocator) !void {
                 } else {
                     try delete_config_menu_handler(line[0], configs, io, allocator);
                 }
+                state = .MAIN;
+                std.debug.print("\nPress Enter to continue...", .{});
+                _ = try reader.takeDelimiter('\n') orelse break;
+            },
+            .INSTALL_DEPS => {
+                if (line.len == 0) {
+                    install_commands(commands, io) catch |err| {
+                        std.debug.print("  ✗ installation failed: {t}\n", .{err});
+                    };
+                } else {
+                    const choice = std.fmt.parseInt(usize, line, 10) catch 0;
+                    if (choice == 0 or choice > commands.len) {
+                        std.debug.print("invalid option\n", .{});
+                    } else {
+                        install_command(commands[choice - 1], io) catch |err| {
+                            std.debug.print("  ✗ installation failed: {t}\n", .{err});
+                        };
+                    }
+                }
+                state = .MAIN;
+                std.debug.print("\nPress Enter to continue...", .{});
+                _ = try reader.takeDelimiter('\n') orelse break;
+            },
+            .GIT_PULL => {
+                try git_pull(io);
                 state = .MAIN;
                 std.debug.print("\nPress Enter to continue...", .{});
                 _ = try reader.takeDelimiter('\n') orelse break;

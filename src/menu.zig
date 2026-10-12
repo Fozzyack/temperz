@@ -48,6 +48,10 @@ fn render_command_menu(commands: [][]u8) void {
     std.debug.print(" Leave blank to install all\n", .{});
 }
 
+fn render_git_pull() void {
+    std.debug.print(" Attempting Git Pull\n", .{});
+}
+
 pub fn render_menu(state: MenuState, configs: []Config, commands: [][]u8) void {
     clear_screan();
     render_title();
@@ -56,7 +60,8 @@ pub fn render_menu(state: MenuState, configs: []Config, commands: [][]u8) void {
         .MAIN => render_main_options(),
         .CONFIGS_INSTALL => render_config_menu(configs, false),
         .CONFIGS_DELETE => render_config_menu(configs, true),
-        .INSTALL => render_command_menu(commands),
+        .INSTALL_DEPS => render_command_menu(commands),
+        .GIT_PULL => render_git_pull(),
         else => std.debug.print("invalid state\n", .{}),
     }
     render_divider();
