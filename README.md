@@ -11,6 +11,26 @@ zig build
 ./zig-out/bin/temperz
 ```
 
+### Portable x86_64 Linux build
+
+To build an executable for x86_64 Linux without requiring the build machine's
+CPU features or a particular system libc version:
+
+```sh
+zig build -Dtarget=x86_64-linux -Dcpu=baseline
+```
+
+The resulting `zig-out/bin/temperz` is statically linked and can be copied to
+other x86_64 Linux systems without installing Zig. This avoids distribution-specific
+libc dependencies, but still requires a compatible Linux kernel; it does not
+guarantee support for every historical Linux version. Plain `zig build` targets
+the build machine by default.
+
+Commands used to install dependencies still require their corresponding shell,
+package manager, or other tools on the destination system. Pulling updates requires
+Git. The `configs/` folder is still resolved from the current working directory,
+as described below.
+
 ## Where to put configs
 
 **Temperz looks for `configs/` in your current working directory, not beside
