@@ -24,12 +24,13 @@ fn clear_screan() void {
 
 fn render_main_options() void {
     std.debug.print(" Options\n", .{});
-    std.debug.print(" [1] Install Dotfiles\n", .{});
-    std.debug.print(" [2] Git Pull\n", .{});
-    std.debug.print(" [3] Exit\n", .{});
+    std.debug.print(" [1] Install Configs\n", .{});
+    std.debug.print(" [2] Install Deps\n", .{});
+    std.debug.print(" [3] Git Pull\n", .{});
+    std.debug.print(" [4] Exit\n", .{});
 }
 
-fn render_install_menu(configs: []Config) void {
+fn render_config_menu(configs: []Config) void {
     std.debug.print(" Options\n", .{});
     for (configs, 1..) |config, idx| {
         std.debug.print(" [{d}]: {s}\n", .{ idx, config.name });
@@ -37,13 +38,23 @@ fn render_install_menu(configs: []Config) void {
     std.debug.print(" Leave blank to install all\n", .{});
 }
 
-pub fn render_menu(state: MenuState, configs: []Config) void {
+fn render_command_menu(commands: [][]u8) void {
+    std.debug.print(" Options\n", .{});
+    for (commands, 1..) |command, idx| {
+        std.debug.print(" [{d}]: {s}\n", .{ idx, command });
+    }
+    std.debug.print(" Leave blank to install all\n", .{});
+}
+
+pub fn render_menu(state: MenuState, configs: []Config, commands: [][]u8) void {
     clear_screan();
     render_title();
     render_divider();
     switch (state) {
         .MAIN => render_main_options(),
-        .INSTALL => render_install_menu(configs),
+        .CONFIGS => render_config_menu(configs),
+        .INSTALL => render_command_menu(commands),
+        else => std.debug.print("invalid state\n", .{}),
     }
     render_divider();
 }

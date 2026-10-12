@@ -38,7 +38,7 @@ pub fn get_commands(io: Io, allocator: Allocator) ![][]u8 {
 
         while (true) {
             const idx = mem.findScalar(u8, read_buffer[0..used], '\n') orelse break;
-            const command = read_buffer[0 .. idx + 1];
+            const command = read_buffer[0..idx];
 
             commands = try allocator.realloc(commands, commands.len + 1);
             commands[commands.len - 1] = try allocator.dupe(u8, command);

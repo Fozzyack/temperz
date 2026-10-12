@@ -14,9 +14,10 @@ const File = std.Io.File;
 
 fn main_menu(char: u8, state: *MenuState) void {
     switch (char) {
-        '1' => state.* = MenuState.INSTALL,
-        '2' => std.debug.print("git pull\n", .{}),
-        '3' => std.debug.print("exit\n", .{}),
+        '1' => state.* = MenuState.CONFIGS,
+        '2' => state.* = MenuState.INSTALL,
+        '3' => state.* = MenuState.GIT,
+        '4' => state.* = MenuState.EXIT,
         else => std.debug.print("invalid option\n", .{}),
     }
 }
@@ -25,15 +26,17 @@ pub fn event_loop(io: Io, allocator: Allocator) !void {
     const configs = try get_configs(io, allocator);
     defer allocator.free(configs);
 
-    const install_configs = try get_commands(io, allocator);
-    defer allocator.free(install_configs);
+    const commands = try get_commands(io, allocator);
+    defer allocator.free(commands);
 
     var buffer: [1024]u8 = undefined;
     var stdin_reader = std.Io.File.stdin().readerStreaming(io, &buffer);
     var reader = &stdin_reader.interface;
     var state: MenuState = MenuState.MAIN;
     while (true) {
-        render_menu(state, configs);
+        if (state == MenuState.EXIT) break;
+
+        render_menu(state, configs, commands);
 
         std.debug.print("> ", .{});
         const eol = try reader.takeDelimiter('\n') orelse break;
@@ -47,6 +50,7 @@ pub fn event_loop(io: Io, allocator: Allocator) !void {
         switch (state) {
             .MAIN => main_menu(line[0], &state),
             .INSTALL => main_menu(line[0], &state),
+            else => std.debug.print("invalid state\n", .{}),
         }
 
         std.debug.print("line: {s}\n", .{line});
