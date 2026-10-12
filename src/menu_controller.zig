@@ -4,10 +4,11 @@ const MenuState = @import("menu_state.zig").MenuState;
 const get_configs = @import("configs.zig").get_configs;
 const install_config = @import("configs.zig").install_config;
 const install_configs = @import("configs.zig").install_configs;
+const delete_config = @import("configs.zig").delete_config;
+const delete_configs = @import("configs.zig").delete_configs;
 const get_commands = @import("install_deps.zig").get_commands;
 
 const Config = @import("configs.zig").Config;
-const log = @import("log.zig").log;
 
 const std = @import("std");
 
@@ -28,16 +29,24 @@ fn main_menu_handler(char: u8, state: *MenuState) void {
     }
 }
 
-fn config_menu_handler(char: u8, configs: []Config, io: Io, allocator: Allocator) !void {
-    const choice = char - '0';
-    if (choice > configs.len) {
+fn install_config_menu_handler(char: u8, configs: []Config, io: Io, allocator: Allocator) !void {
+    const choice = char -% '0';
+    if (choice == 0 or choice > configs.len) {
         std.debug.print("invalid option\n", .{});
         return;
     }
 
-    install_config(configs[choice - 1], io, allocator) catch |err| {
-        if (err == error.PathAlreadyExists) try log("Config Already Installed\n", .{});
-    };
+    try install_config(configs[choice - 1], io, allocator);
+}
+
+fn delete_config_menu_handler(char: u8, configs: []Config, io: Io, allocator: Allocator) !void {
+    const choice = char -% '0';
+    if (choice == 0 or choice > configs.len) {
+        std.debug.print("invalid option\n", .{});
+        return;
+    }
+
+    try delete_config(configs[choice - 1], io, allocator);
 }
 
 pub fn event_loop(io: Io, allocator: Allocator) !void {
@@ -72,11 +81,20 @@ pub fn event_loop(io: Io, allocator: Allocator) !void {
                 if (line.len == 0) {
                     try install_configs(configs, io, allocator);
                 } else {
-                    config_menu_handler(line[0], configs, io, allocator) catch |err| {
-                        if (err == error.PathAlreadyExists) try log("Config Already Installed\n", .{});
-                    };
+                    try install_config_menu_handler(line[0], configs, io, allocator);
                 }
                 state = .MAIN;
+                std.debug.print("\nPress Enter to continue...", .{});
+                _ = try reader.takeDelimiter('\n') orelse break;
+            },
+            .CONFIGS_DELETE => {
+                if (line.len == 0) {
+                    try delete_configs(configs, io, allocator);
+                } else {
+                    try delete_config_menu_handler(line[0], configs, io, allocator);
+                }
+                state = .MAIN;
+                std.debug.print("\nPress Enter to continue...", .{});
                 _ = try reader.takeDelimiter('\n') orelse break;
             },
             else => {},

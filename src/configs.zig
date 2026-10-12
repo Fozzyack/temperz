@@ -46,32 +46,14 @@ pub fn init_home_var(home: []const u8, allocator: Allocator) !void {
     home_var = try allocator.dupe(u8, home);
 }
 
+/// Display prefix for the symlink's location, e.g. `~/` or `~/.config/`.
+fn link_prefix(location: InstallLocation) []const u8 {
+    return if (location == .HOME) "~/" else "~/.config/";
+}
+
 pub fn install_config(config: Config, io: Io, allocator: Allocator) !void {
     const home_str: []const u8 = home_var orelse return error.HomeNotSet;
     const location = if (config.location == .HOME) "" else ".config";
-
-    try log("installing: {s} ... to: {s} ... from: {s}\n", .{ config.name, location, config.absolute_path });
-
-    const config_path = try std.mem.join(allocator, "/", &.{ home_str, location });
-    defer allocator.free(config_path);
-
-    const config_dir = try Dir.openDirAbsolute(io, config_path, .{ .iterate = true });
-    try config_dir.symLink(io, config.absolute_path, config.name, .{ .is_directory = config.is_directory });
-}
-
-pub fn install_configs(configs: []Config, io: Io, allocator: Allocator) !void {
-    for (configs) |config| {
-        install_config(config, io, allocator) catch |err| {
-            if (err == error.PathAlreadyExists) try log("Config Already Installed\n", .{}) else return err;
-        };
-    }
-}
-
-pub fn delete_config(config: Config, io: Io, allocator: Allocator) !void {
-    const home_str: []const u8 = home_var orelse return error.HomeNotSet;
-    const location = if (config.location == .HOME) "" else ".config";
-
-    try log("deleting: {s} ... from: {s}\n", .{ config.name, location });
 
     const config_path = try std.mem.join(allocator, "/", &.{ home_str, location });
     defer allocator.free(config_path);
@@ -79,15 +61,46 @@ pub fn delete_config(config: Config, io: Io, allocator: Allocator) !void {
     const config_dir = try Dir.openDirAbsolute(io, config_path, .{ .iterate = true });
     defer config_dir.close(io);
 
-    try config_dir.deleteFile(io, config.name);
+    config_dir.symLink(io, config.absolute_path, config.name, .{ .is_directory = config.is_directory }) catch |err| {
+        if (err == error.PathAlreadyExists) {
+            try log("  • skipped    {s}{s}  (already installed)\n", .{ link_prefix(config.location), config.name });
+            return;
+        }
+        return err;
+    };
+
+    try log("  ✓ installed  {s}{s}  →  {s}\n", .{ link_prefix(config.location), config.name, config.absolute_path });
+}
+
+pub fn install_configs(configs: []Config, io: Io, allocator: Allocator) !void {
+    try log("\nInstalling configs...\n", .{});
+    for (configs) |config| try install_config(config, io, allocator);
+}
+
+pub fn delete_config(config: Config, io: Io, allocator: Allocator) !void {
+    const home_str: []const u8 = home_var orelse return error.HomeNotSet;
+    const location = if (config.location == .HOME) "" else ".config";
+
+    const config_path = try std.mem.join(allocator, "/", &.{ home_str, location });
+    defer allocator.free(config_path);
+
+    const config_dir = try Dir.openDirAbsolute(io, config_path, .{ .iterate = true });
+    defer config_dir.close(io);
+
+    config_dir.deleteFile(io, config.name) catch |err| {
+        if (err == error.FileNotFound) {
+            try log("  • skipped    {s}{s}  (not installed)\n", .{ link_prefix(config.location), config.name });
+            return;
+        }
+        return err;
+    };
+
+    try log("  ✓ removed    {s}{s}\n", .{ link_prefix(config.location), config.name });
 }
 
 pub fn delete_configs(configs: []Config, io: Io, allocator: Allocator) !void {
-    for (configs) |config| {
-        delete_config(config, io, allocator) catch |err| {
-            if (err == error.FileNotFound) try log("Config Not Installed\n", .{}) else return err;
-        };
-    }
+    try log("\nRemoving configs...\n", .{});
+    for (configs) |config| try delete_config(config, io, allocator);
 }
 
 fn get_home_configs(list: *std.ArrayList(Config), io: Io, root: Dir, allocator: Allocator) !void {
