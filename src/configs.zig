@@ -12,6 +12,8 @@ const CONFIG_DIR = "configs/configs";
 
 pub var home_var: ?[]u8 = null;
 
+const log = @import("log.zig").log;
+
 const InstallLocation = enum(u8) {
     HOME,
     CONFIG,
@@ -47,11 +49,21 @@ pub fn install_config(config: Config, io: Io, allocator: Allocator) !void {
     const home_str: []const u8 = home_var orelse return error.HomeNotSet;
     const location = if (config.location == .HOME) "" else ".config";
 
+    try log("installing: {s} ... to: {s} ... from: {s}\n", .{ config.name, location, config.absolute_path });
+
     const config_path = try std.mem.join(allocator, "/", &.{ home_str, location });
     defer allocator.free(config_path);
 
     const config_dir = try Dir.openDirAbsolute(io, config_path, .{ .iterate = true });
     try config_dir.symLink(io, config.absolute_path, config.name, .{ .is_directory = config.is_directory });
+}
+
+pub fn install_configs(configs: []Config, io: Io, allocator: Allocator) !void {
+    for (configs) |config| {
+        install_config(config, io, allocator) catch |err| {
+            if (err == error.PathAlreadyExists) try log("Config Already Installed\n", .{});
+        };
+    }
 }
 
 fn get_home_configs(list: *std.ArrayList(Config), io: Io, root: Dir, allocator: Allocator) !void {

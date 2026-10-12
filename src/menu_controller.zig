@@ -3,9 +3,11 @@ const MenuState = @import("menu_state.zig").MenuState;
 
 const get_configs = @import("configs.zig").get_configs;
 const install_config = @import("configs.zig").install_config;
+const install_configs = @import("configs.zig").install_configs;
 const get_commands = @import("install_deps.zig").get_commands;
 
 const Config = @import("configs.zig").Config;
+const log = @import("log.zig").log;
 
 const std = @import("std");
 
@@ -25,15 +27,16 @@ fn main_menu_handler(char: u8, state: *MenuState) void {
     }
 }
 
-fn config_menu_handler(char: u8, state: *MenuState, configs: []Config, io: Io, allocator: Allocator) !void {
+fn config_menu_handler(char: u8, configs: []Config, io: Io, allocator: Allocator) !void {
     const choice = char - '0';
     if (choice > configs.len) {
         std.debug.print("invalid option\n", .{});
         return;
     }
 
-    try install_config(configs[choice - 1], io, allocator);
-    state.* = .MAIN;
+    install_config(configs[choice - 1], io, allocator) catch |err| {
+        if (err == error.PathAlreadyExists) try log("Config Already Installed\n", .{});
+    };
 }
 
 pub fn event_loop(io: Io, allocator: Allocator) !void {
@@ -65,20 +68,17 @@ pub fn event_loop(io: Io, allocator: Allocator) !void {
                 main_menu_handler(line[0], &state);
             },
             .CONFIGS => {
-                config: {
-                    if (line.len == 0) {
-                        std.debug.print("Installing all dots\n", .{});
-                        break :config;
-                    }
-                    config_menu_handler(line[0], &state, configs, io, allocator) catch |err| {
-                        std.debug.print("error: {s}\n", .{@errorName(err)});
-                        state = .MAIN;
+                if (line.len == 0) {
+                    try install_configs(configs, io, allocator);
+                } else {
+                    config_menu_handler(line[0], configs, io, allocator) catch |err| {
+                        if (err == error.PathAlreadyExists) try log("Config Already Installed\n", .{});
                     };
                 }
+                state = .MAIN;
+                _ = try reader.takeDelimiter('\n') orelse break;
             },
             else => {},
         }
-
-        std.debug.print("line: {s}\n", .{line});
     }
 }
