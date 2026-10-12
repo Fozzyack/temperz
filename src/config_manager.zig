@@ -5,7 +5,7 @@ const Dir = Io.Dir;
 const mem = std.mem;
 const Allocator = std.mem.Allocator;
 
-const log = @import("logger.zig").log;
+const log = @import("logger.zig").log_styled;
 
 const HOME_DIR = "configs/home";
 const CONFIG_DIR = "configs/configs";
@@ -61,17 +61,17 @@ pub fn install_config(config: Config, io: Io, allocator: Allocator) !void {
 
     config_dir.symLink(io, config.absolute_path, config.name, .{ .is_directory = config.is_directory }) catch |err| {
         if (err == error.PathAlreadyExists) {
-            try log("  • skipped    {s}{s}  (already installed)\n", .{ link_prefix(config.location), config.name });
+            try log(.muted, "  [--] skipped    {s}{s}  (already installed)\n", .{ link_prefix(config.location), config.name });
             return;
         }
         return err;
     };
 
-    try log("  ✓ installed  {s}{s}  →  {s}\n", .{ link_prefix(config.location), config.name, config.absolute_path });
+    try log(.success, "  [OK] installed  {s}{s}  ->  {s}\n", .{ link_prefix(config.location), config.name, config.absolute_path });
 }
 
 pub fn install_configs(configs: []Config, io: Io, allocator: Allocator) !void {
-    try log("\nInstalling configs...\n", .{});
+    try log(.teal, "\n  [..] Installing configs...\n", .{});
     for (configs) |config| try install_config(config, io, allocator);
 }
 
@@ -87,17 +87,17 @@ pub fn delete_config(config: Config, io: Io, allocator: Allocator) !void {
 
     config_dir.deleteFile(io, config.name) catch |err| {
         if (err == error.FileNotFound) {
-            try log("  • skipped    {s}{s}  (not installed)\n", .{ link_prefix(config.location), config.name });
+            try log(.muted, "  [--] skipped    {s}{s}  (not installed)\n", .{ link_prefix(config.location), config.name });
             return;
         }
         return err;
     };
 
-    try log("  ✓ removed    {s}{s}\n", .{ link_prefix(config.location), config.name });
+    try log(.success, "  [OK] removed    {s}{s}\n", .{ link_prefix(config.location), config.name });
 }
 
 pub fn delete_configs(configs: []Config, io: Io, allocator: Allocator) !void {
-    try log("\nRemoving configs...\n", .{});
+    try log(.teal, "\n  [..] Removing configs...\n", .{});
     for (configs) |config| try delete_config(config, io, allocator);
 }
 

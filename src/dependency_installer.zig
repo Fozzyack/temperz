@@ -4,6 +4,7 @@ const Io = std.Io;
 const Dir = Io.Dir;
 const mem = std.mem;
 const Allocator = std.mem.Allocator;
+const status = @import("terminal_theme.zig").status;
 
 const BUFFER_SIZE: usize = 4096;
 const INSTALL_FILE = "configs/install.config";
@@ -18,7 +19,7 @@ pub fn install_command(command: []const u8, io: Io) !void {
     const trimmed = mem.trim(u8, command, " \t\r\n");
     if (trimmed.len == 0) return error.EmptyCommand;
 
-    std.debug.print("\n  → {s}\n", .{trimmed});
+    status(.accent, "\n  [..] {s}\n", .{trimmed});
     var child = try std.process.spawn(io, .{
         .argv = &.{ "sh", "-c", trimmed },
         .stdin = .inherit,
@@ -27,12 +28,12 @@ pub fn install_command(command: []const u8, io: Io) !void {
     });
 
     try check_term(try child.wait(io));
-    std.debug.print("  ✓ completed\n", .{});
+    status(.success, "  [OK] completed\n", .{});
 }
 
 /// Installs in file order, stopping at the first failure.
 pub fn install_commands(commands: [][]u8, io: Io) !void {
-    std.debug.print("\nInstalling dependencies...\n", .{});
+    status(.teal, "\n  [..] Installing dependencies...\n", .{});
     for (commands) |command| try install_command(command, io);
 }
 

@@ -29,10 +29,10 @@ zig build
 ## Terminal appearance
 
 ```text
-  temperz  /  dev environment
+  [ temperz ]  DEV ENVIRONMENT / CONTROL PANEL
   Your tools. Your dotfiles. One place.
 
-  ----------------------------------------------------
+  +--------------------------------------------------+
 
   What would you like to do?
   Choose an action to get started.
@@ -43,15 +43,18 @@ zig build
   [4]  Pull updates          Sync this repository
   [5]  Exit
 
-  ----------------------------------------------------
+  +--------------------------------------------------+
   Type a number + Enter  /  Enter to exit
 
-  >
+  READY >
 ```
 
-A compact layout with a cyan title, numbered actions, bold headings, and muted
-descriptions. Dividers separate the menu from its keyboard hints, with a simple
-`>` prompt below. Interactive terminals clear the screen between menus.
+A retro text control panel styled for the WezTerm and Ghostty configs in
+`configs/`: burnt-orange controls, teal dividers, warm-cream headings, and muted
+descriptions. Colors use the configs' shared ANSI palette, so the terminal keeps
+its own charcoal background, transparency, and Terminess font. Status messages
+use ASCII indicators (`[OK]`, `[..]`, `[--]`, `[!!]`) with green successes and red
+errors. Interactive terminals clear the screen between menus.
 
 Set `NO_COLOR=1` to disable colors; redirected output and `TERM=dumb` use plain
 text without screen-clearing escapes.

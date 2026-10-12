@@ -20,6 +20,7 @@ const install_commands = dependencies.install_commands;
 const git_pull = @import("git_sync.zig").git_pull;
 const render_menu = @import("menu_renderer.zig").render_menu;
 const MenuState = @import("menu_state.zig").MenuState;
+const status = @import("terminal_theme.zig").status;
 
 fn main_menu_handler(char: u8, state: *MenuState) void {
     switch (char) {
@@ -28,14 +29,14 @@ fn main_menu_handler(char: u8, state: *MenuState) void {
         '3' => state.* = .INSTALL_DEPS,
         '4' => state.* = .GIT_PULL,
         '5' => state.* = .EXIT,
-        else => std.debug.print("invalid option\n", .{}),
+        else => status(.failure, "  [!!] Invalid option\n", .{}),
     }
 }
 
 fn install_config_menu_handler(char: u8, configs: []Config, io: Io, allocator: Allocator) !void {
     const choice = char -% '0';
     if (choice == 0 or choice > configs.len) {
-        std.debug.print("invalid option\n", .{});
+        status(.failure, "  [!!] Invalid option\n", .{});
         return;
     }
 
@@ -45,7 +46,7 @@ fn install_config_menu_handler(char: u8, configs: []Config, io: Io, allocator: A
 fn delete_config_menu_handler(char: u8, configs: []Config, io: Io, allocator: Allocator) !void {
     const choice = char -% '0';
     if (choice == 0 or choice > configs.len) {
-        std.debug.print("invalid option\n", .{});
+        status(.failure, "  [!!] Invalid option\n", .{});
         return;
     }
 
@@ -75,7 +76,7 @@ pub fn event_loop(io: Io, allocator: Allocator) !void {
         switch (state) {
             .MAIN => {
                 if (line.len == 0) {
-                    std.debug.print("exit\n", .{});
+                    status(.muted, "  [--] Session closed\n", .{});
                     break;
                 }
                 main_menu_handler(line[0], &state);
@@ -87,7 +88,7 @@ pub fn event_loop(io: Io, allocator: Allocator) !void {
                     try install_config_menu_handler(line[0], configs, io, allocator);
                 }
                 state = .MAIN;
-                std.debug.print("\nPress Enter to continue...", .{});
+                status(.muted, "\n  Press Enter to continue...", .{});
                 _ = try reader.takeDelimiter('\n') orelse break;
             },
             .CONFIGS_DELETE => {
@@ -97,32 +98,32 @@ pub fn event_loop(io: Io, allocator: Allocator) !void {
                     try delete_config_menu_handler(line[0], configs, io, allocator);
                 }
                 state = .MAIN;
-                std.debug.print("\nPress Enter to continue...", .{});
+                status(.muted, "\n  Press Enter to continue...", .{});
                 _ = try reader.takeDelimiter('\n') orelse break;
             },
             .INSTALL_DEPS => {
                 if (line.len == 0) {
                     install_commands(commands, io) catch |err| {
-                        std.debug.print("  ✗ installation failed: {t}\n", .{err});
+                        status(.failure, "  [!!] Installation failed: {t}\n", .{err});
                     };
                 } else {
                     const choice = std.fmt.parseInt(usize, line, 10) catch 0;
                     if (choice == 0 or choice > commands.len) {
-                        std.debug.print("invalid option\n", .{});
+                        status(.failure, "  [!!] Invalid option\n", .{});
                     } else {
                         install_command(commands[choice - 1], io) catch |err| {
-                            std.debug.print("  ✗ installation failed: {t}\n", .{err});
+                            status(.failure, "  [!!] Installation failed: {t}\n", .{err});
                         };
                     }
                 }
                 state = .MAIN;
-                std.debug.print("\nPress Enter to continue...", .{});
+                status(.muted, "\n  Press Enter to continue...", .{});
                 _ = try reader.takeDelimiter('\n') orelse break;
             },
             .GIT_PULL => {
                 try git_pull(io);
                 state = .MAIN;
-                std.debug.print("\nPress Enter to continue...", .{});
+                status(.muted, "\n  Press Enter to continue...", .{});
                 _ = try reader.takeDelimiter('\n') orelse break;
             },
             else => {},
