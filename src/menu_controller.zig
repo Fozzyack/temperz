@@ -20,9 +20,10 @@ const File = std.Io.File;
 fn main_menu_handler(char: u8, state: *MenuState) void {
     switch (char) {
         '1' => state.* = .CONFIGS_INSTALL,
-        '2' => state.* = .INSTALL,
-        '3' => state.* = .GIT,
-        '4' => state.* = .EXIT,
+        '2' => state.* = .CONFIGS_DELETE,
+        '3' => state.* = .INSTALL,
+        '4' => state.* = .GIT,
+        '5' => state.* = .EXIT,
         else => std.debug.print("invalid option\n", .{}),
     }
 }
