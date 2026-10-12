@@ -44,11 +44,14 @@ pub fn init_home_var(home: []const u8, allocator: Allocator) !void {
 }
 
 pub fn install_config(config: Config, io: Io, allocator: Allocator) !void {
-    if (home_var == null) return error.HomeNotSet;
+    const home_str: []const u8 = home_var orelse return error.HomeNotSet;
     const location = if (config.location == .HOME) "" else ".config";
-    const config_path = try std.mem.join(allocator, "/", &.{ home_var, location });
+
+    const config_path = try std.mem.join(allocator, "/", &.{ home_str, location });
+    defer allocator.free(config_path);
+
     const config_dir = try Dir.openDirAbsolute(io, config_path, .{ .iterate = true });
-    try config_dir.symLink(io, config.name, config.absolute_path, .{ .is_directory = config.is_directory });
+    try config_dir.symLink(io, config.absolute_path, config.name, .{ .is_directory = config.is_directory });
 }
 
 fn get_home_configs(list: *std.ArrayList(Config), io: Io, root: Dir, allocator: Allocator) !void {

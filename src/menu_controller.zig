@@ -2,6 +2,7 @@ const render_menu = @import("menu.zig").render_menu;
 const MenuState = @import("menu_state.zig").MenuState;
 
 const get_configs = @import("configs.zig").get_configs;
+const install_config = @import("configs.zig").install_config;
 const get_commands = @import("install_deps.zig").get_commands;
 
 const Config = @import("configs.zig").Config;
@@ -22,6 +23,17 @@ fn main_menu_handler(char: u8, state: *MenuState) void {
         '4' => state.* = .EXIT,
         else => std.debug.print("invalid option\n", .{}),
     }
+}
+
+fn config_menu_handler(char: u8, state: *MenuState, configs: []Config, io: Io, allocator: Allocator) !void {
+    const choice = char - '0';
+    if (choice > configs.len) {
+        std.debug.print("invalid option\n", .{});
+        return;
+    }
+
+    try install_config(configs[choice - 1], io, allocator);
+    state.* = .MAIN;
 }
 
 pub fn event_loop(io: Io, allocator: Allocator) !void {
@@ -58,7 +70,10 @@ pub fn event_loop(io: Io, allocator: Allocator) !void {
                         std.debug.print("Installing all dots\n", .{});
                         break :config;
                     }
-                    // config_menu_handler(line[0], &state);
+                    config_menu_handler(line[0], &state, configs, io, allocator) catch |err| {
+                        std.debug.print("error: {s}\n", .{@errorName(err)});
+                        state = .MAIN;
+                    };
                 }
             },
             else => {},
