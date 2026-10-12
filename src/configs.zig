@@ -38,6 +38,7 @@ pub const Config = struct {
 
     pub fn deinit(self: *Config, allocator: Allocator) void {
         allocator.free(self.name);
+        allocator.free(self.absolute_path);
     }
 };
 
