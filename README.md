@@ -11,6 +11,48 @@ zig build
 ./zig-out/bin/temperz
 ```
 
+## Where to put configs
+
+**Temperz looks for `configs/` in your current working directory, not beside
+the executable.** With the repository layout, keep configs at the repository
+root and run `./zig-out/bin/temperz` from that root:
+
+```text
+temperz/                   # Run commands from this directory
+├── configs/
+│   ├── home/              # Files and directories to link into ~/
+│   │   └── .bashrc        # Example: becomes ~/.bashrc
+│   ├── configs/           # Files and directories to link into ~/.config/
+│   │   └── nvim/          # Example: becomes ~/.config/nvim
+│   └── install.config     # One dependency-install shell command per line
+└── zig-out/
+    └── bin/
+        └── temperz        # Built executable
+```
+
+Names are preserved exactly, including leading dots. Create both `configs/home/`
+and `configs/configs/`, even if one is empty. Before installing configs, ensure
+the destination directory exists:
+
+```sh
+mkdir -p ~/.config
+```
+
+The executable can live elsewhere, including on your `PATH`. First change into
+the directory containing your `configs/` folder, then launch it:
+
+```sh
+cd /path/to/your/dotfiles
+/path/to/temperz
+```
+
+If you place `temperz` and `configs/` side by side, run `./temperz` from that
+directory. For the repository build above, running `cd zig-out/bin && ./temperz`
+would instead look for `zig-out/bin/configs/`.
+
+Installed configs are symlinks to the source files, so keep the source directory
+in place after installation.
+
 ## Features
 
 - **Install configs:** Symlink files and directories from `configs/home/` into
