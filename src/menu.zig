@@ -23,15 +23,18 @@ fn clear_screan() void {
 }
 
 fn render_main_options() void {
+    std.debug.print(" Options\n", .{});
     std.debug.print(" [1] Install Dotfiles\n", .{});
     std.debug.print(" [2] Git Pull\n", .{});
     std.debug.print(" [3] Exit\n", .{});
 }
 
 fn render_install_menu(configs: []Config) void {
+    std.debug.print(" Options\n", .{});
     for (configs, 1..) |config, idx| {
         std.debug.print(" [{d}]: {s}\n", .{ idx, config.name });
     }
+    std.debug.print(" Leave blank to install all\n", .{});
 }
 
 pub fn render_menu(state: MenuState, configs: []Config) void {
@@ -42,4 +45,5 @@ pub fn render_menu(state: MenuState, configs: []Config) void {
         .MAIN => render_main_options(),
         .INSTALL => render_install_menu(configs),
     }
+    render_divider();
 }

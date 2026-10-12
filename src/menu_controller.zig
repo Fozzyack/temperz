@@ -35,6 +35,7 @@ pub fn event_loop(io: Io, allocator: Allocator) !void {
     while (true) {
         render_menu(state, configs);
 
+        std.debug.print("> ", .{});
         const eol = try reader.takeDelimiter('\n') orelse break;
         const line = std.mem.trim(u8, eol, "\r");
 
