@@ -7,7 +7,10 @@ const Allocator = std.mem.Allocator;
 const status = @import("terminal_theme.zig").status;
 
 const BUFFER_SIZE: usize = 4096;
-const INSTALL_FILE = "configs/install.config";
+pub const INSTALL_FILE = "configs/install.config";
+
+/// Returned when `configs/install.config` does not exist.
+pub const ScanError = error{InstallFileMissing};
 
 pub fn get_commands(io: Io, allocator: Allocator) ![][]u8 {
     return get_commands_in(Dir.cwd(), io, allocator);
@@ -51,7 +54,10 @@ pub fn free_commands(commands: [][]u8, allocator: Allocator) void {
 }
 
 fn get_commands_in(root: Dir, io: Io, allocator: Allocator) ![][]u8 {
-    const file = try root.openFile(io, INSTALL_FILE, .{});
+    const file = root.openFile(io, INSTALL_FILE, .{}) catch |err| switch (err) {
+        error.FileNotFound => return error.InstallFileMissing,
+        else => return err,
+    };
     defer file.close(io);
 
     var commands: std.ArrayList([]u8) = .empty;
@@ -140,6 +146,17 @@ test "get_commands returns an empty slice for an empty file" {
     const commands = try get_commands_in(tmp.dir, testing.io, testing.allocator);
     defer free_commands(commands, testing.allocator);
     try testing.expectEqual(@as(usize, 0), commands.len);
+}
+
+test "get_commands reports a missing install file" {
+    const testing = std.testing;
+    var tmp = testing.tmpDir(.{});
+    defer tmp.cleanup();
+    try tmp.dir.createDirPath(testing.io, "configs");
+    try testing.expectError(
+        error.InstallFileMissing,
+        get_commands_in(tmp.dir, testing.io, testing.allocator),
+    );
 }
 
 test "check_term accepts only successful exits" {

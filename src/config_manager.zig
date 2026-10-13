@@ -7,8 +7,15 @@ const Allocator = std.mem.Allocator;
 
 const log = @import("logger.zig").log_styled;
 
-const HOME_DIR = "configs/home";
-const CONFIG_DIR = "configs/configs";
+pub const HOME_DIR = "configs/home";
+pub const CONFIG_DIR = "configs/configs";
+
+/// Returned when the `configs/` scan cannot start because a required
+/// directory is missing (as opposed to empty).
+pub const ScanError = error{
+    HomeDirMissing,
+    ConfigDirMissing,
+};
 
 pub var home_var: ?[]u8 = null;
 
@@ -103,7 +110,10 @@ pub fn delete_configs(configs: []Config, io: Io, allocator: Allocator) !void {
 }
 
 fn get_home_configs(list: *std.ArrayList(Config), io: Io, root: Dir, allocator: Allocator) !void {
-    var home_dir = try root.openDir(io, HOME_DIR, .{ .iterate = true });
+    var home_dir = root.openDir(io, HOME_DIR, .{ .iterate = true }) catch |err| switch (err) {
+        error.FileNotFound => return error.HomeDirMissing,
+        else => return err,
+    };
     defer home_dir.close(io);
 
     var iterator: Dir.Iterator = home_dir.iterate();
@@ -122,7 +132,10 @@ fn get_home_configs(list: *std.ArrayList(Config), io: Io, root: Dir, allocator: 
 }
 
 fn get_config_configs(list: *std.ArrayList(Config), io: Io, root: Dir, allocator: Allocator) !void {
-    var config_dir = try root.openDir(io, CONFIG_DIR, .{ .iterate = true });
+    var config_dir = root.openDir(io, CONFIG_DIR, .{ .iterate = true }) catch |err| switch (err) {
+        error.FileNotFound => return error.ConfigDirMissing,
+        else => return err,
+    };
     defer config_dir.close(io);
 
     var iterator: Dir.Iterator = config_dir.iterate();
@@ -257,9 +270,26 @@ test "get_configs_in reports a missing root directory" {
     defer tmp.cleanup();
 
     try testing.expectError(
-        error.FileNotFound,
+        error.HomeDirMissing,
         get_configs_in(testing.io, tmp.dir, testing.allocator),
     );
+}
+
+test "get_configs_in reports each missing config directory separately" {
+    var tmp = testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const io = testing.io;
+
+    try tmp.dir.createDirPath(io, HOME_DIR);
+    try testing.expectError(
+        error.ConfigDirMissing,
+        get_configs_in(io, tmp.dir, testing.allocator),
+    );
+
+    try tmp.dir.createDirPath(io, CONFIG_DIR);
+    const configs = try get_configs_in(io, tmp.dir, testing.allocator);
+    defer free_configs(testing.allocator, configs);
+    try testing.expectEqual(@as(usize, 0), configs.len);
 }
 
 test "delete_config removes files and directories without following symlinks" {
