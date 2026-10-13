@@ -82,6 +82,13 @@ in place after installation.
   symlink targets untouched. Real directories are removed recursively, including
   their contents. Missing paths are skipped. Matching files and directories are
   deleted even when they are not symlinks, so use with care.
+- **Preview and confirm:** Both config actions show a read-only dry run before
+  changing anything, whether selecting one item or all items. Installation previews
+  links and skips existing paths; removal previews deletions and explicitly warns
+  when a directory and all its contents will be deleted recursively. Press Enter
+  to proceed, or type anything and press Enter to cancel. End-of-input also cancels.
+  If nothing would change, no confirmation is requested. The preview reflects the
+  filesystem at that moment; execution still uses the normal install/remove behavior.
 - **Install dependencies:** Run one or all commands from `configs/install.config`
   with interactive prompts. Use one trusted shell command per line; blank lines
   are ignored, and batch installation stops at the first failure.

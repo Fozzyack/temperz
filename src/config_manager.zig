@@ -82,6 +82,49 @@ pub fn install_configs(configs: []Config, io: Io, allocator: Allocator) !void {
     for (configs) |config| try install_config(config, io, allocator);
 }
 
+pub const ConfigAction = enum { install, remove };
+const PreviewAction = enum { link, skip_existing, remove_file, remove_link, remove_directory, skip_missing };
+
+fn preview_action(config: Config, action: ConfigAction, io: Io, allocator: Allocator) !PreviewAction {
+    const home = home_var orelse return error.HomeNotSet;
+    const path = try mem.join(allocator, "/", &.{ home, if (config.location == .HOME) "" else ".config" });
+    defer allocator.free(path);
+    const dir = try Dir.openDirAbsolute(io, path, .{});
+    defer dir.close(io);
+
+    // Do not follow links: even a broken symlink occupies the destination.
+    const stat = dir.statFile(io, config.name, .{ .follow_symlinks = false }) catch |err| switch (err) {
+        error.FileNotFound => return if (action == .install) .link else .skip_missing,
+        else => return err,
+    };
+    if (action == .install) return .skip_existing;
+    return switch (stat.kind) {
+        .directory => .remove_directory,
+        .sym_link => .remove_link,
+        else => .remove_file,
+    };
+}
+
+/// Read-only preview. Returns the number of paths that would change.
+pub fn preview_configs(configs: []const Config, action: ConfigAction, io: Io, allocator: Allocator) !usize {
+    try log(.teal, "\n  [..] Dry run: {s} configs (no changes made)\n", .{if (action == .install) "install" else "remove"});
+    var changes: usize = 0;
+    for (configs) |config| {
+        const planned = try preview_action(config, action, io, allocator);
+        switch (planned) {
+            .link => try log(.text, "  [..] would link    {s}{s}  ->  {s}\n", .{ link_prefix(config.location), config.name, config.absolute_path }),
+            .skip_existing => try log(.muted, "  [--] would skip    {s}{s}  (already exists)\n", .{ link_prefix(config.location), config.name }),
+            .skip_missing => try log(.muted, "  [--] would skip    {s}{s}  (not installed)\n", .{ link_prefix(config.location), config.name }),
+            .remove_file => try log(.text, "  [..] would delete  {s}{s}  (file)\n", .{ link_prefix(config.location), config.name }),
+            .remove_link => try log(.text, "  [..] would unlink  {s}{s}  (symlink; source untouched)\n", .{ link_prefix(config.location), config.name }),
+            .remove_directory => try log(.failure, "  [!!] would delete  {s}{s}  (directory and ALL contents recursively)\n", .{ link_prefix(config.location), config.name }),
+        }
+        if (planned != .skip_existing and planned != .skip_missing) changes += 1;
+    }
+    if (changes == 0) try log(.muted, "  [--] Nothing to change\n", .{});
+    return changes;
+}
+
 pub fn delete_config(config: Config, io: Io, allocator: Allocator) !void {
     const home_str: []const u8 = home_var orelse return error.HomeNotSet;
     const location = if (config.location == .HOME) "" else ".config";
@@ -326,4 +369,43 @@ test "delete_config removes files and directories without following symlinks" {
     const contents = try tmp.dir.readFileAlloc(io, "source/config", allocator, .limited(100));
     defer allocator.free(contents);
     try testing.expectEqualStrings("keep", contents);
+}
+
+test "dry run classifies existing paths without modifying them" {
+    var tmp = testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const io = testing.io;
+    const allocator = testing.allocator;
+    @import("logger.zig").init_log(io);
+    const home = try tmp.dir.realPathFileAlloc(io, ".", allocator);
+    defer allocator.free(home);
+    const previous_home = home_var;
+    home_var = home;
+    defer home_var = previous_home;
+
+    try tmp.dir.createDirPath(io, ".config/directory/nested");
+    try tmp.dir.writeFile(io, .{ .sub_path = ".config/directory/nested/config", .data = "keep" });
+    try tmp.dir.writeFile(io, .{ .sub_path = ".config/file", .data = "keep" });
+    try tmp.dir.symLink(io, "missing", ".config/broken", .{});
+    const configs = [_]Config{
+        .{ .name = "directory", .absolute_path = "/source/directory" },
+        .{ .name = "file", .absolute_path = "/source/file" },
+        .{ .name = "broken", .absolute_path = "/source/broken" },
+        .{ .name = "missing", .absolute_path = "/source/missing" },
+    };
+    try testing.expectEqual(PreviewAction.skip_existing, try preview_action(configs[0], .install, io, allocator));
+    try testing.expectEqual(PreviewAction.skip_existing, try preview_action(configs[2], .install, io, allocator));
+    try testing.expectEqual(PreviewAction.remove_directory, try preview_action(configs[0], .remove, io, allocator));
+    try testing.expectEqual(PreviewAction.remove_file, try preview_action(configs[1], .remove, io, allocator));
+    try testing.expectEqual(PreviewAction.remove_link, try preview_action(configs[2], .remove, io, allocator));
+    try testing.expectEqual(PreviewAction.skip_missing, try preview_action(configs[3], .remove, io, allocator));
+    try testing.expectEqual(@as(usize, 1), try preview_configs(&configs, .install, io, allocator));
+    try testing.expectEqual(@as(usize, 3), try preview_configs(&configs, .remove, io, allocator));
+    try testing.expectEqual(@as(usize, 0), try preview_configs(configs[0..3], .install, io, allocator));
+    try testing.expectEqual(@as(usize, 0), try preview_configs(&.{}, .remove, io, allocator));
+    const contents = try tmp.dir.readFileAlloc(io, ".config/directory/nested/config", allocator, .limited(100));
+    defer allocator.free(contents);
+    try testing.expectEqualStrings("keep", contents);
+    try testing.expectEqual(.sym_link, (try tmp.dir.statFile(io, ".config/broken", .{ .follow_symlinks = false })).kind);
+    try testing.expectError(error.FileNotFound, tmp.dir.statFile(io, ".config/missing", .{ .follow_symlinks = false }));
 }

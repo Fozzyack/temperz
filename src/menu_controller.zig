@@ -6,9 +6,7 @@ const Allocator = std.mem.Allocator;
 const config_manager = @import("config_manager.zig");
 const Config = config_manager.Config;
 const get_configs = config_manager.get_configs;
-const install_config = config_manager.install_config;
 const install_configs = config_manager.install_configs;
-const delete_config = config_manager.delete_config;
 const delete_configs = config_manager.delete_configs;
 
 const dependencies = @import("dependency_installer.zig");
@@ -33,24 +31,30 @@ fn main_menu_handler(char: u8, state: *MenuState) void {
     }
 }
 
-fn install_config_menu_handler(char: u8, configs: []Config, io: Io, allocator: Allocator) !void {
-    const choice = char -% '0';
-    if (choice == 0 or choice > configs.len) {
-        status(.failure, "  [!!] Invalid option\n", .{});
+fn config_menu_handler(line: []const u8, configs: []Config, action: config_manager.ConfigAction, reader: *Io.Reader, io: Io, allocator: Allocator) !void {
+    const selected = if (line.len == 0) configs else blk: {
+        const choice = std.fmt.parseInt(usize, line, 10) catch 0;
+        if (choice == 0 or choice > configs.len) {
+            status(.failure, "  [!!] Invalid option\n", .{});
+            return;
+        }
+        break :blk configs[choice - 1 .. choice];
+    };
+    if (try config_manager.preview_configs(selected, action, io, allocator) == 0) return;
+
+    status(.accent, "\n  Press Enter to continue, or type anything to cancel > ", .{});
+    const confirmation = try reader.takeDelimiter('\n') orelse {
+        status(.muted, "  [--] Cancelled (no changes made)\n", .{});
+        return;
+    };
+    if (std.mem.trim(u8, confirmation, "\r").len != 0) {
+        status(.muted, "  [--] Cancelled (no changes made)\n", .{});
         return;
     }
-
-    try install_config(configs[choice - 1], io, allocator);
-}
-
-fn delete_config_menu_handler(char: u8, configs: []Config, io: Io, allocator: Allocator) !void {
-    const choice = char -% '0';
-    if (choice == 0 or choice > configs.len) {
-        status(.failure, "  [!!] Invalid option\n", .{});
-        return;
+    switch (action) {
+        .install => try install_configs(selected, io, allocator),
+        .remove => try delete_configs(selected, io, allocator),
     }
-
-    try delete_config(configs[choice - 1], io, allocator);
 }
 
 pub fn event_loop(io: Io, allocator: Allocator) !void {
@@ -82,21 +86,13 @@ pub fn event_loop(io: Io, allocator: Allocator) !void {
                 main_menu_handler(line[0], &state);
             },
             .CONFIGS_INSTALL => {
-                if (line.len == 0) {
-                    try install_configs(configs, io, allocator);
-                } else {
-                    try install_config_menu_handler(line[0], configs, io, allocator);
-                }
+                try config_menu_handler(line, configs, .install, reader, io, allocator);
                 state = .MAIN;
                 status(.muted, "\n  Press Enter to continue...", .{});
                 _ = try reader.takeDelimiter('\n') orelse break;
             },
             .CONFIGS_DELETE => {
-                if (line.len == 0) {
-                    try delete_configs(configs, io, allocator);
-                } else {
-                    try delete_config_menu_handler(line[0], configs, io, allocator);
-                }
+                try config_menu_handler(line, configs, .remove, reader, io, allocator);
                 state = .MAIN;
                 status(.muted, "\n  Press Enter to continue...", .{});
                 _ = try reader.takeDelimiter('\n') orelse break;
