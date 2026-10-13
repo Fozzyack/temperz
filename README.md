@@ -79,8 +79,9 @@ in place after installation.
   `~/`, and from `configs/configs/` into `~/.config/`. Existing paths are skipped;
   `~/.config/` must already exist.
 - **Remove configs:** Remove matching paths from `~/` and `~/.config/`, leaving
-  repository sources untouched. Missing paths are skipped. This does not check
-  whether a matching file is a symlink, so use with care.
+  symlink targets untouched. Real directories are removed recursively, including
+  their contents. Missing paths are skipped. Matching files and directories are
+  deleted even when they are not symlinks, so use with care.
 - **Install dependencies:** Run one or all commands from `configs/install.config`
   with interactive prompts. Use one trusted shell command per line; blank lines
   are ignored, and batch installation stops at the first failure.

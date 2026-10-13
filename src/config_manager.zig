@@ -85,12 +85,13 @@ pub fn delete_config(config: Config, io: Io, allocator: Allocator) !void {
     const config_dir = try Dir.openDirAbsolute(io, config_path, .{ .iterate = true });
     defer config_dir.close(io);
 
-    config_dir.deleteFile(io, config.name) catch |err| {
-        if (err == error.FileNotFound) {
+    config_dir.deleteFile(io, config.name) catch |err| switch (err) {
+        error.IsDir => try config_dir.deleteTree(io, config.name),
+        error.FileNotFound => {
             try log(.muted, "  [--] skipped    {s}{s}  (not installed)\n", .{ link_prefix(config.location), config.name });
             return;
-        }
-        return err;
+        },
+        else => return err,
     };
 
     try log(.success, "  [OK] removed    {s}{s}\n", .{ link_prefix(config.location), config.name });
@@ -164,7 +165,7 @@ const testing = std.testing;
 
 /// Frees a slice returned by `get_configs`/`get_configs_in` and the names it owns.
 fn free_configs(allocator: Allocator, configs: []Config) void {
-    for (configs) |config| allocator.free(config.name);
+    for (configs) |*config| config.deinit(allocator);
     allocator.free(configs);
 }
 
@@ -186,8 +187,8 @@ test "InstallLocation.toString maps to the config directories" {
 
 test "Config.init duplicates the name" {
     var name: [4]u8 = "abcd".*;
-    const config = try Config.init(&name, .HOME, testing.allocator);
-    defer testing.allocator.free(config.name);
+    var config = try Config.init(&name, .HOME, "/source/abcd", false, testing.allocator);
+    defer config.deinit(testing.allocator);
 
     name[0] = 'Z';
 
@@ -259,4 +260,40 @@ test "get_configs_in reports a missing root directory" {
         error.FileNotFound,
         get_configs_in(testing.io, tmp.dir, testing.allocator),
     );
+}
+
+test "delete_config removes files and directories without following symlinks" {
+    var tmp = testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const io = testing.io;
+    const allocator = testing.allocator;
+    @import("logger.zig").init_log(io);
+
+    const home = try tmp.dir.realPathFileAlloc(io, ".", allocator);
+    defer allocator.free(home);
+    const previous_home = home_var;
+    home_var = home;
+    defer home_var = previous_home;
+
+    try tmp.dir.createDirPath(io, ".config/directory/nested");
+    try tmp.dir.writeFile(io, .{ .sub_path = ".config/directory/nested/config", .data = "config" });
+    try tmp.dir.writeFile(io, .{ .sub_path = ".config/file", .data = "config" });
+    try tmp.dir.createDirPath(io, "source");
+    try tmp.dir.writeFile(io, .{ .sub_path = "source/config", .data = "keep" });
+    try tmp.dir.symLink(io, "../source", ".config/link", .{ .is_directory = true });
+    try tmp.dir.symLink(io, "../../source", ".config/directory/link", .{ .is_directory = true });
+    try tmp.dir.symLink(io, "missing", ".config/broken", .{});
+    try tmp.dir.createDirPath(io, "home-directory/nested");
+
+    for ([_][]const u8{ "directory", "file", "link", "broken", "missing" }) |name| {
+        try delete_config(.{ .name = name, .absolute_path = "unused" }, io, allocator);
+        const path = try std.fmt.allocPrint(allocator, ".config/{s}", .{name});
+        defer allocator.free(path);
+        try testing.expectError(error.FileNotFound, tmp.dir.statFile(io, path, .{ .follow_symlinks = false }));
+    }
+    try delete_config(.{ .name = "home-directory", .absolute_path = "unused", .location = .HOME }, io, allocator);
+    try testing.expectError(error.FileNotFound, tmp.dir.statFile(io, "home-directory", .{}));
+    const contents = try tmp.dir.readFileAlloc(io, "source/config", allocator, .limited(100));
+    defer allocator.free(contents);
+    try testing.expectEqualStrings("keep", contents);
 }
