@@ -97,13 +97,11 @@ pub fn event_loop(io: Io, allocator: Allocator) !void {
             },
             .CONFIGS_INSTALL => {
                 try config_menu_handler(line, configs, .install, reader, io, allocator);
-                state = .MAIN;
                 status(.muted, "\n  Press Enter to continue...", .{});
                 _ = try reader.takeDelimiter('\n') orelse break;
             },
             .CONFIGS_DELETE => {
                 try config_menu_handler(line, configs, .remove, reader, io, allocator);
-                state = .MAIN;
                 status(.muted, "\n  Press Enter to continue...", .{});
                 _ = try reader.takeDelimiter('\n') orelse break;
             },
@@ -122,7 +120,6 @@ pub fn event_loop(io: Io, allocator: Allocator) !void {
                         };
                     }
                 }
-                state = .MAIN;
                 status(.muted, "\n  Press Enter to continue...", .{});
                 _ = try reader.takeDelimiter('\n') orelse break;
             },
