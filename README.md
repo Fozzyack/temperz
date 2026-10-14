@@ -94,7 +94,9 @@ in place after installation.
   are ignored, and batch installation stops at the first failure.
 - **Pull updates:** Run `git pull` in the current repository.
 - **Terminal menu:** Select numbered actions and press Enter. Empty input exits
-  the main menu or processes all items in a config/dependency submenu.
+  the main menu or processes all items in a config/dependency submenu. Select
+  `0` in the install, remove, or dependency submenu to go back to the main menu
+  without making changes.
 
 ## Terminal appearance
 

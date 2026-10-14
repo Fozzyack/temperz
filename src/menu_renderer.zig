@@ -53,6 +53,7 @@ fn render_config_menu(configs: []Config, is_delete: bool) void {
     for (configs, 1..) |config, idx| {
         render_option(idx, config.name);
     }
+    render_option(0, "Go back");
 }
 
 fn render_command_menu(commands: [][]u8) void {
@@ -61,6 +62,7 @@ fn render_command_menu(commands: [][]u8) void {
     for (commands, 1..) |command, idx| {
         render_option(idx, command);
     }
+    render_option(0, "Go back");
 }
 
 pub fn render_prompt() void {
@@ -83,8 +85,8 @@ pub fn render_menu(state: MenuState, configs: []Config, commands: [][]u8) void {
     render_divider();
     const hint = switch (state) {
         .MAIN => "Type a number + Enter  /  Enter to exit",
-        .CONFIGS_INSTALL, .INSTALL_DEPS => "Type a number + Enter  /  Enter to install all",
-        .CONFIGS_DELETE => "Type a number + Enter  /  Enter to remove all",
+        .CONFIGS_INSTALL, .INSTALL_DEPS => "0 to go back  /  Enter to install all",
+        .CONFIGS_DELETE => "0 to go back  /  Enter to remove all",
         .GIT_PULL => "Enter to continue",
         .EXIT => "Goodbye",
     };

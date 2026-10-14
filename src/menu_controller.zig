@@ -78,6 +78,16 @@ pub fn event_loop(io: Io, allocator: Allocator) !void {
         const line = std.mem.trim(u8, eol, "\r");
 
         switch (state) {
+            .CONFIGS_INSTALL, .CONFIGS_DELETE, .INSTALL_DEPS => {
+                if (std.mem.eql(u8, line, "0")) {
+                    state = .MAIN;
+                    continue;
+                }
+            },
+            else => {},
+        }
+
+        switch (state) {
             .MAIN => {
                 if (line.len == 0) {
                     status(.muted, "  [--] Session closed\n", .{});
