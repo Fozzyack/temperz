@@ -8,7 +8,7 @@ const status = @import("terminal_theme.zig").status;
 
 const BUFFER_SIZE: usize = 4096;
 pub const INSTALL_FILE = "configs/install.config";
-pub const VM_INSTALL_FILE = "configs/install-vm.config";
+pub const VM_INSTALL_FILE = "vm/install.config";
 
 /// Returned when `configs/install.config` does not exist.
 pub const ScanError = error{InstallFileMissing};
@@ -193,6 +193,7 @@ test "VM commands use a separate optional file and the same parsing rules" {
 
     try tmp.dir.createDirPath(testing.io, "configs");
     try tmp.dir.writeFile(testing.io, .{ .sub_path = INSTALL_FILE, .data = "regular-command\n" });
+    try tmp.dir.createDirPath(testing.io, "vm");
     try tmp.dir.writeFile(testing.io, .{
         .sub_path = VM_INSTALL_FILE,
         .data = "  vm-command-one \r\n\n\t \r\n\tvm-command-two\t",

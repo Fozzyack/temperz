@@ -28,12 +28,12 @@ the build machine by default.
 
 Commands used to install dependencies still require their corresponding shell,
 package manager, or other tools on the destination system. Pulling updates requires
-Git. The `configs/` folder is still resolved from the current working directory,
+Git. The `configs/` and `vm/` folders are resolved from the current working directory,
 as described below.
 
 ## Where to put configs
 
-**Temperz looks for `configs/` in your current working directory, not beside
+**Temperz looks for `configs/` and optional `vm/` in your current working directory, not beside
 the executable.** With the repository layout, keep configs at the repository
 root and run `./zig-out/bin/temperz` from that root:
 
@@ -44,10 +44,13 @@ temperz/                   # Run commands from this directory
 │   │   └── .bashrc        # Example: becomes ~/.bashrc
 │   ├── configs/           # Files and directories to link into ~/.config/
 │   │   └── nvim/          # Example: becomes ~/.config/nvim
-│   ├── vm/                # Optional VM-only files and directories to link into ~/
-│   │   └── .bashrc        # Installed only through Setup VM
-│   ├── install.config     # One dependency-install shell command per line
-│   └── install-vm.config  # Optional VM dependency-install commands, same format
+│   └── install.config     # One dependency-install shell command per line
+├── vm/                    # Optional, used only by VM menu actions
+│   ├── home/              # VM files and directories to link into ~/
+│   │   └── .bashrc        # Example: becomes ~/.bashrc
+│   ├── configs/           # VM files and directories to link into ~/.config/
+│   │   └── i3/            # Example: becomes ~/.config/i3
+│   └── install.config     # Optional VM dependency-install commands, same format
 └── zig-out/
     └── bin/
         └── temperz        # Built executable
@@ -60,6 +63,16 @@ the destination directory exists:
 ```sh
 mkdir -p ~/.config
 ```
+
+`vm/home/` and `vm/configs/` are independently optional. Put `i3/` directly in
+`vm/configs/`, not inside a `.config/` wrapper: each entry gets its own symlink,
+so an existing `~/.config/` directory is preserved. Existing destination entries
+such as `~/.config/i3` are still skipped, not overwritten or merged.
+
+If upgrading from the earlier VM layout, move home entries from `configs/vm/`
+to `vm/home/`, and entries inside its `.config/` directory to `vm/configs/`.
+Move `configs/install-vm.config` to `vm/install.config`. The old paths are no
+longer scanned.
 
 The executable can live elsewhere, including on your `PATH`. First change into
 the directory containing your `configs/` folder, then launch it:
@@ -85,8 +98,9 @@ in place after installation.
   symlink targets untouched. Real directories are removed recursively, including
   their contents. Missing paths are skipped. Matching files and directories are
   deleted even when they are not symlinks, so use with care.
-- **Setup VM:** Install one or all VM configs from optional `configs/vm/` into
-  `~/`, using the same preview and confirmation as normal installs. These configs
+- **Setup VM:** Install one or all configs from `vm/home/` into `~/` and from
+  `vm/configs/` into `~/.config/`, using the same preview and confirmation as normal installs.
+  `~/.config/` must already exist. These configs
   have `for_vm = true` and are excluded from normal installs. Removal lists both
   normal and VM configs. Existing destination paths are skipped, not replaced.
 - **Preview and confirm:** Both config actions show a read-only dry run before
@@ -99,7 +113,7 @@ in place after installation.
 - **Install dependencies:** Run one or all commands from `configs/install.config`
   with interactive prompts. Use one trusted shell command per line; blank lines
   are ignored, and batch installation stops at the first failure.
-- **Install VM deps:** Run one or all commands from `configs/install-vm.config`,
+- **Install VM deps:** Run one or all commands from `vm/install.config`,
   using the same format and execution behavior as regular dependencies. Missing
   or empty files show an empty command list. VM and regular commands stay separate.
 - **Pull updates:** Run `git pull` in the current repository.

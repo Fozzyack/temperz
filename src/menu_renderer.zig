@@ -54,7 +54,7 @@ fn render_config_menu(configs: []Config, state: MenuState) void {
         .CONFIGS_DELETE => "Remove configs",
         .SETUP_VM => "Setup VM",
         else => "Install configs",
-    }, if (state == .CONFIGS_DELETE) "Remove dotfile links from your home directory." else if (state == .SETUP_VM) "Link VM dotfiles into your home directory." else "Link dotfiles into your home directory.");
+    }, if (state == .CONFIGS_DELETE) "Remove dotfile links from ~/ and ~/.config/." else if (state == .SETUP_VM) "Link vm/home/ into ~/ and vm/configs/ into ~/.config/." else "Link dotfiles into ~/ and ~/.config/.");
     if (configs.len == 0) std.debug.print("  No configs found.\n", .{});
     for (configs, 1..) |config, idx| {
         render_option(idx, config.name);
@@ -63,7 +63,7 @@ fn render_config_menu(configs: []Config, state: MenuState) void {
 }
 
 fn render_command_menu(commands: [][]u8, for_vm: bool) void {
-    render_heading(if (for_vm) "Install VM deps" else "Install dependencies", if (for_vm) "Run the setup commands in configs/install-vm.config (optional)." else "Run the setup commands in configs/install.config.");
+    render_heading(if (for_vm) "Install VM deps" else "Install dependencies", if (for_vm) "Run the setup commands in vm/install.config (optional)." else "Run the setup commands in configs/install.config.");
     if (commands.len == 0) std.debug.print("  No setup commands found.\n", .{});
     for (commands, 1..) |command, idx| {
         render_option(idx, command);
