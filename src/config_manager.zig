@@ -9,6 +9,7 @@ const log = @import("logger.zig").log_styled;
 
 pub const HOME_DIR = "configs/home";
 pub const CONFIG_DIR = "configs/configs";
+pub const VM_DIR = "configs/vm";
 
 /// Returned when the `configs/` scan cannot start because a required
 /// directory is missing (as opposed to empty).
@@ -36,9 +37,14 @@ pub const Config = struct {
     absolute_path: []const u8,
     location: InstallLocation = .CONFIG,
     is_directory: bool = false,
+    for_vm: bool = false,
 
     fn init(name: []const u8, location: InstallLocation, absolute_path: []const u8, is_directory: bool, allocator: Allocator) !Config {
         return .{ .name = try allocator.dupe(u8, name), .location = location, .absolute_path = try allocator.dupe(u8, absolute_path), .is_directory = is_directory };
+    }
+
+    fn set_for_vm(self: *Config) void {
+        self.for_vm = true;
     }
 
     pub fn deinit(self: *Config, allocator: Allocator) void {
@@ -152,6 +158,30 @@ pub fn delete_configs(configs: []Config, io: Io, allocator: Allocator) !void {
     for (configs) |config| try delete_config(config, io, allocator);
 }
 
+fn get_vm_configs(list: *std.ArrayList(Config), io: Io, root: Dir, allocator: Allocator) !void {
+    var vm_dir = root.openDir(io, VM_DIR, .{ .iterate = true }) catch |err| switch (err) {
+        error.FileNotFound => return error.VMDirMissing,
+        else => return err,
+    };
+    defer vm_dir.close(io);
+
+    var iterator: Dir.Iterator = vm_dir.iterate();
+    while (try iterator.next(io)) |entry| {
+        if (entry.kind != .file and entry.kind != .directory) continue;
+
+        const file_name = entry.name;
+        const absolute_path = try vm_dir.realPathFileAlloc(io, file_name, allocator);
+        defer allocator.free(absolute_path);
+        const is_directory = entry.kind == .directory;
+
+        var config: Config = try .init(file_name, .HOME, absolute_path, is_directory, allocator);
+        config.set_for_vm();
+        errdefer config.deinit(allocator);
+        try list.append(allocator, config);
+    }
+
+}
+
 fn get_home_configs(list: *std.ArrayList(Config), io: Io, root: Dir, allocator: Allocator) !void {
     var home_dir = root.openDir(io, HOME_DIR, .{ .iterate = true }) catch |err| switch (err) {
         error.FileNotFound => return error.HomeDirMissing,
@@ -212,6 +242,7 @@ fn get_configs_in(io: Io, root: Dir, allocator: Allocator) ![]Config {
         }
     }
 
+    try get_vm_configs(&configs, io, root, allocator);
     try get_home_configs(&configs, io, root, allocator);
     try get_config_configs(&configs, io, root, allocator);
     return configs.toOwnedSlice(allocator);
