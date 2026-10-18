@@ -160,7 +160,7 @@ pub fn delete_configs(configs: []Config, io: Io, allocator: Allocator) !void {
 
 fn get_vm_configs(list: *std.ArrayList(Config), io: Io, root: Dir, allocator: Allocator) !void {
     var vm_dir = root.openDir(io, VM_DIR, .{ .iterate = true }) catch |err| switch (err) {
-        error.FileNotFound => return error.VMDirMissing,
+        error.FileNotFound => return,
         else => return err,
     };
     defer vm_dir.close(io);
@@ -179,7 +179,6 @@ fn get_vm_configs(list: *std.ArrayList(Config), io: Io, root: Dir, allocator: Al
         errdefer config.deinit(allocator);
         try list.append(allocator, config);
     }
-
 }
 
 fn get_home_configs(list: *std.ArrayList(Config), io: Io, root: Dir, allocator: Allocator) !void {
@@ -230,7 +229,7 @@ pub fn get_configs(io: Io, allocator: Allocator) ![]Config {
     return get_configs_in(io, Dir.cwd(), allocator);
 }
 
-/// Collects configs from the `HOME_DIR` and `CONFIG_DIR` subdirectories of `root`.
+/// Collects configs from `HOME_DIR`, `CONFIG_DIR`, and optional `VM_DIR` under `root`.
 /// Split out from `get_configs` so tests can point at a temporary directory tree.
 fn get_configs_in(io: Io, root: Dir, allocator: Allocator) ![]Config {
     var configs: std.ArrayList(Config) = .empty;
@@ -249,6 +248,16 @@ fn get_configs_in(io: Io, root: Dir, allocator: Allocator) ![]Config {
 }
 
 const testing = std.testing;
+
+/// Returns a borrowed subset; free only the returned slice, not its configs.
+pub fn filter_configs(configs: []const Config, for_vm: bool, allocator: Allocator) ![]Config {
+    var filtered: std.ArrayList(Config) = .empty;
+    errdefer filtered.deinit(allocator);
+    for (configs) |config| {
+        if (config.for_vm == for_vm) try filtered.append(allocator, config);
+    }
+    return filtered.toOwnedSlice(allocator);
+}
 
 /// Frees a slice returned by `get_configs`/`get_configs_in` and the names it owns.
 fn free_configs(allocator: Allocator, configs: []Config) void {
@@ -281,6 +290,54 @@ test "Config.init duplicates the name" {
 
     try testing.expectEqualStrings("abcd", config.name);
     try testing.expectEqual(InstallLocation.HOME, config.location);
+}
+
+test "VM configs are marked and filtered separately from regular configs" {
+    var tmp = testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const io = testing.io;
+    const allocator = testing.allocator;
+    try tmp.dir.createDirPath(io, HOME_DIR);
+    try tmp.dir.createDirPath(io, CONFIG_DIR);
+    try tmp.dir.createDirPath(io, VM_DIR ++ "/vm-directory");
+    try tmp.dir.writeFile(io, .{ .sub_path = VM_DIR ++ "/.bashrc", .data = "vm" });
+    try tmp.dir.writeFile(io, .{ .sub_path = HOME_DIR ++ "/.bashrc", .data = "regular" });
+    try tmp.dir.createDirPath(io, CONFIG_DIR ++ "/nvim");
+
+    const configs = try get_configs_in(io, tmp.dir, allocator);
+    defer free_configs(allocator, configs);
+    const vm = try filter_configs(configs, true, allocator);
+    defer allocator.free(vm);
+    const regular = try filter_configs(configs, false, allocator);
+    defer allocator.free(regular);
+    try testing.expectEqual(@as(usize, 2), vm.len);
+    try testing.expectEqual(@as(usize, 2), regular.len);
+    for (vm) |config| {
+        try testing.expect(config.for_vm);
+        try testing.expectEqual(InstallLocation.HOME, config.location);
+        try testing.expect(mem.indexOf(u8, config.absolute_path, "/" ++ VM_DIR ++ "/") != null);
+        try testing.expectEqual(mem.eql(u8, config.name, "vm-directory"), config.is_directory);
+    }
+    for (regular) |config| try testing.expect(!config.for_vm);
+
+    const empty = try filter_configs(&.{}, true, allocator);
+    defer allocator.free(empty);
+    try testing.expectEqual(@as(usize, 0), empty.len);
+
+    @import("logger.zig").init_log(io);
+    const home = try tmp.dir.realPathFileAlloc(io, ".", allocator);
+    defer allocator.free(home);
+    const previous_home = home_var;
+    home_var = home;
+    defer home_var = previous_home;
+    try testing.expectEqual(@as(usize, 2), try preview_configs(vm, .install, io, allocator));
+    try install_configs(vm, io, allocator);
+    try testing.expectEqual(.sym_link, (try tmp.dir.statFile(io, ".bashrc", .{ .follow_symlinks = false })).kind);
+    try testing.expectEqual(.sym_link, (try tmp.dir.statFile(io, "vm-directory", .{ .follow_symlinks = false })).kind);
+    const contents = try tmp.dir.readFileAlloc(io, ".bashrc", allocator, .limited(100));
+    defer allocator.free(contents);
+    try testing.expectEqualStrings("vm", contents);
+    try testing.expectError(error.FileNotFound, tmp.dir.statFile(io, ".config/nvim", .{}));
 }
 
 test "get_configs_in collects files and directories from both roots" {

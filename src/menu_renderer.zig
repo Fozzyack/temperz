@@ -44,11 +44,17 @@ fn render_main_options() void {
     render_action(2, "Remove configs", "Unlink your dotfiles");
     render_action(3, "Install dependencies", "Set up your dev tools");
     render_action(4, "Pull updates", "Sync this repository");
-    render_option(5, "Exit");
+    render_action(5, "Setup VM", "Link your VM dotfiles");
+    render_action(6, "Install VM deps", "Set up your VM tools");
+    render_option(7, "Exit");
 }
 
-fn render_config_menu(configs: []Config, is_delete: bool) void {
-    render_heading(if (is_delete) "Remove configs" else "Install configs", if (is_delete) "Remove dotfile links from your home directory." else "Link dotfiles into your home directory.");
+fn render_config_menu(configs: []Config, state: MenuState) void {
+    render_heading(switch (state) {
+        .CONFIGS_DELETE => "Remove configs",
+        .SETUP_VM => "Setup VM",
+        else => "Install configs",
+    }, if (state == .CONFIGS_DELETE) "Remove dotfile links from your home directory." else if (state == .SETUP_VM) "Link VM dotfiles into your home directory." else "Link dotfiles into your home directory.");
     if (configs.len == 0) std.debug.print("  No configs found.\n", .{});
     for (configs, 1..) |config, idx| {
         render_option(idx, config.name);
@@ -56,8 +62,8 @@ fn render_config_menu(configs: []Config, is_delete: bool) void {
     render_option(0, "Go back");
 }
 
-fn render_command_menu(commands: [][]u8) void {
-    render_heading("Install dependencies", "Run the setup commands in configs/install.config.");
+fn render_command_menu(commands: [][]u8, for_vm: bool) void {
+    render_heading(if (for_vm) "Install VM deps" else "Install dependencies", if (for_vm) "Run the setup commands in configs/install-vm.config (optional)." else "Run the setup commands in configs/install.config.");
     if (commands.len == 0) std.debug.print("  No setup commands found.\n", .{});
     for (commands, 1..) |command, idx| {
         render_option(idx, command);
@@ -75,9 +81,8 @@ pub fn render_menu(state: MenuState, configs: []Config, commands: [][]u8) void {
     render_divider();
     switch (state) {
         .MAIN => render_main_options(),
-        .CONFIGS_INSTALL => render_config_menu(configs, false),
-        .CONFIGS_DELETE => render_config_menu(configs, true),
-        .INSTALL_DEPS => render_command_menu(commands),
+        .CONFIGS_INSTALL, .CONFIGS_DELETE, .SETUP_VM => render_config_menu(configs, state),
+        .INSTALL_DEPS, .INSTALL_VM_DEPS => render_command_menu(commands, state == .INSTALL_VM_DEPS),
         .GIT_PULL => render_heading("Pull updates", "Press Enter to pull the latest repository changes."),
         .EXIT => {},
     }
@@ -85,7 +90,7 @@ pub fn render_menu(state: MenuState, configs: []Config, commands: [][]u8) void {
     render_divider();
     const hint = switch (state) {
         .MAIN => "Type a number + Enter  /  Enter to exit",
-        .CONFIGS_INSTALL, .INSTALL_DEPS => "0 to go back  /  Enter to install all",
+        .CONFIGS_INSTALL, .SETUP_VM, .INSTALL_DEPS, .INSTALL_VM_DEPS => "0 to go back  /  Enter to install all",
         .CONFIGS_DELETE => "0 to go back  /  Enter to remove all",
         .GIT_PULL => "Enter to continue",
         .EXIT => "Goodbye",

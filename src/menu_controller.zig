@@ -26,7 +26,9 @@ fn main_menu_handler(char: u8, state: *MenuState) void {
         '2' => state.* = .CONFIGS_DELETE,
         '3' => state.* = .INSTALL_DEPS,
         '4' => state.* = .GIT_PULL,
-        '5' => state.* = .EXIT,
+        '5' => state.* = .SETUP_VM,
+        '6' => state.* = .INSTALL_VM_DEPS,
+        '7' => state.* = .EXIT,
         else => status(.failure, "  [!!] Invalid option\n", .{}),
     }
 }
@@ -59,10 +61,19 @@ fn config_menu_handler(line: []const u8, configs: []Config, action: config_manag
 
 pub fn event_loop(io: Io, allocator: Allocator) !void {
     const configs = try get_configs(io, allocator);
-    defer allocator.free(configs);
+    defer {
+        for (configs) |*config| config.deinit(allocator);
+        allocator.free(configs);
+    }
+    const regular_configs = try config_manager.filter_configs(configs, false, allocator);
+    defer allocator.free(regular_configs);
+    const vm_configs = try config_manager.filter_configs(configs, true, allocator);
+    defer allocator.free(vm_configs);
 
     const commands = try get_commands(io, allocator);
     defer free_commands(commands, allocator);
+    const vm_commands = try dependencies.get_vm_commands(io, allocator);
+    defer free_commands(vm_commands, allocator);
 
     var buffer: [1024]u8 = undefined;
     var stdin_reader = std.Io.File.stdin().readerStreaming(io, &buffer);
@@ -71,14 +82,20 @@ pub fn event_loop(io: Io, allocator: Allocator) !void {
     while (true) {
         if (state == .EXIT) break;
 
-        render_menu(state, configs, commands);
+        const visible_configs = switch (state) {
+            .CONFIGS_INSTALL => regular_configs,
+            .SETUP_VM => vm_configs,
+            else => configs,
+        };
+        const visible_commands = if (state == .INSTALL_VM_DEPS) vm_commands else commands;
+        render_menu(state, visible_configs, visible_commands);
 
         @import("menu_renderer.zig").render_prompt();
         const eol = try reader.takeDelimiter('\n') orelse break;
         const line = std.mem.trim(u8, eol, "\r");
 
         switch (state) {
-            .CONFIGS_INSTALL, .CONFIGS_DELETE, .INSTALL_DEPS => {
+            .CONFIGS_INSTALL, .CONFIGS_DELETE, .INSTALL_DEPS, .SETUP_VM, .INSTALL_VM_DEPS => {
                 if (std.mem.eql(u8, line, "0")) {
                     state = .MAIN;
                     continue;
@@ -95,8 +112,8 @@ pub fn event_loop(io: Io, allocator: Allocator) !void {
                 }
                 main_menu_handler(line[0], &state);
             },
-            .CONFIGS_INSTALL => {
-                try config_menu_handler(line, configs, .install, reader, io, allocator);
+            .CONFIGS_INSTALL, .SETUP_VM => {
+                try config_menu_handler(line, visible_configs, .install, reader, io, allocator);
                 status(.muted, "\n  Press Enter to continue...", .{});
                 _ = try reader.takeDelimiter('\n') orelse break;
             },
@@ -105,17 +122,17 @@ pub fn event_loop(io: Io, allocator: Allocator) !void {
                 status(.muted, "\n  Press Enter to continue...", .{});
                 _ = try reader.takeDelimiter('\n') orelse break;
             },
-            .INSTALL_DEPS => {
+            .INSTALL_DEPS, .INSTALL_VM_DEPS => {
                 if (line.len == 0) {
-                    install_commands(commands, io) catch |err| {
+                    install_commands(visible_commands, io) catch |err| {
                         status(.failure, "  [!!] Installation failed: {t}\n", .{err});
                     };
                 } else {
                     const choice = std.fmt.parseInt(usize, line, 10) catch 0;
-                    if (choice == 0 or choice > commands.len) {
+                    if (choice == 0 or choice > visible_commands.len) {
                         status(.failure, "  [!!] Invalid option\n", .{});
                     } else {
-                        install_command(commands[choice - 1], io) catch |err| {
+                        install_command(visible_commands[choice - 1], io) catch |err| {
                             status(.failure, "  [!!] Installation failed: {t}\n", .{err});
                         };
                     }

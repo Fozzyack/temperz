@@ -44,7 +44,10 @@ temperz/                   # Run commands from this directory
 │   │   └── .bashrc        # Example: becomes ~/.bashrc
 │   ├── configs/           # Files and directories to link into ~/.config/
 │   │   └── nvim/          # Example: becomes ~/.config/nvim
-│   └── install.config     # One dependency-install shell command per line
+│   ├── vm/                # Optional VM-only files and directories to link into ~/
+│   │   └── .bashrc        # Installed only through Setup VM
+│   ├── install.config     # One dependency-install shell command per line
+│   └── install-vm.config  # Optional VM dependency-install commands, same format
 └── zig-out/
     └── bin/
         └── temperz        # Built executable
@@ -82,6 +85,10 @@ in place after installation.
   symlink targets untouched. Real directories are removed recursively, including
   their contents. Missing paths are skipped. Matching files and directories are
   deleted even when they are not symlinks, so use with care.
+- **Setup VM:** Install one or all VM configs from optional `configs/vm/` into
+  `~/`, using the same preview and confirmation as normal installs. These configs
+  have `for_vm = true` and are excluded from normal installs. Removal lists both
+  normal and VM configs. Existing destination paths are skipped, not replaced.
 - **Preview and confirm:** Both config actions show a read-only dry run before
   changing anything, whether selecting one item or all items. Installation previews
   links and skips existing paths; removal previews deletions and explicitly warns
@@ -92,10 +99,13 @@ in place after installation.
 - **Install dependencies:** Run one or all commands from `configs/install.config`
   with interactive prompts. Use one trusted shell command per line; blank lines
   are ignored, and batch installation stops at the first failure.
+- **Install VM deps:** Run one or all commands from `configs/install-vm.config`,
+  using the same format and execution behavior as regular dependencies. Missing
+  or empty files show an empty command list. VM and regular commands stay separate.
 - **Pull updates:** Run `git pull` in the current repository.
 - **Terminal menu:** Select numbered actions and press Enter. Empty input exits
   the main menu or processes all items in a config/dependency submenu. Select
-  `0` in the install, remove, or dependency submenu to go back to the main menu
+   `0` in the install, VM setup, remove, or dependency submenu to go back to the main menu
   without making changes.
 
 ## Terminal appearance
@@ -113,7 +123,9 @@ in place after installation.
   [2]  Remove configs        Unlink your dotfiles
   [3]  Install dependencies  Set up your dev tools
   [4]  Pull updates          Sync this repository
-  [5]  Exit
+  [5]  Setup VM              Link your VM dotfiles
+  [6]  Install VM deps       Set up your VM tools
+  [7]  Exit
 
   +--------------------------------------------------+
   Type a number + Enter  /  Enter to exit
