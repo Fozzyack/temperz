@@ -40,12 +40,12 @@ fn render_action(index: usize, label: []const u8, description: []const u8) void 
 
 fn render_main_options() void {
     render_heading("What would you like to do?", "Choose an action to get started.");
-    render_action(1, "Install configs", "Link your dotfiles");
+    render_action(1, "Install configs", "Link Hyprland machine dotfiles");
     render_action(2, "Remove configs", "Unlink your dotfiles");
-    render_action(3, "Install dependencies", "Set up your dev tools");
-    render_action(4, "Pull updates", "Sync this repository");
-    render_action(5, "Setup VM", "Link your VM dotfiles");
-    render_action(6, "Install VM deps", "Set up your VM tools");
+    render_action(3, "Install dependencies", "Set up Hyprland machine tools");
+    render_action(4, "Setup VM", "Link VM dev environment dotfiles");
+    render_action(5, "Install VM deps", "Set up VM dev tools");
+    render_action(6, "Pull updates", "Sync this repository");
     render_option(7, "Exit");
 }
 

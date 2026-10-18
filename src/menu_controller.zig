@@ -25,9 +25,9 @@ fn main_menu_handler(char: u8, state: *MenuState) void {
         '1' => state.* = .CONFIGS_INSTALL,
         '2' => state.* = .CONFIGS_DELETE,
         '3' => state.* = .INSTALL_DEPS,
-        '4' => state.* = .GIT_PULL,
-        '5' => state.* = .SETUP_VM,
-        '6' => state.* = .INSTALL_VM_DEPS,
+        '4' => state.* = .SETUP_VM,
+        '5' => state.* = .INSTALL_VM_DEPS,
+        '6' => state.* = .GIT_PULL,
         '7' => state.* = .EXIT,
         else => status(.failure, "  [!!] Invalid option\n", .{}),
     }

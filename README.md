@@ -91,6 +91,10 @@ in place after installation.
 
 ## Features
 
+The normal install actions are for the Hyprland machine and read only `configs/`.
+VM install actions are for the separate dev environment and read only `vm/`.
+Installing all configs or dependencies in one environment never installs the other's.
+
 - **Install configs:** Symlink files and directories from `configs/home/` into
   `~/`, and from `configs/configs/` into `~/.config/`. Existing paths are skipped;
   `~/.config/` must already exist.
@@ -133,12 +137,12 @@ in place after installation.
   What would you like to do?
   Choose an action to get started.
 
-  [1]  Install configs       Link your dotfiles
+  [1]  Install configs       Link Hyprland machine dotfiles
   [2]  Remove configs        Unlink your dotfiles
-  [3]  Install dependencies  Set up your dev tools
-  [4]  Pull updates          Sync this repository
-  [5]  Setup VM              Link your VM dotfiles
-  [6]  Install VM deps       Set up your VM tools
+  [3]  Install dependencies  Set up Hyprland machine tools
+  [4]  Setup VM              Link VM dev environment dotfiles
+  [5]  Install VM deps       Set up VM dev tools
+  [6]  Pull updates          Sync this repository
   [7]  Exit
 
   +--------------------------------------------------+
