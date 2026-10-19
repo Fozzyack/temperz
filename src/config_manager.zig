@@ -70,6 +70,8 @@ pub fn install_config(config: Config, io: Io, allocator: Allocator) !void {
     const config_path = try std.mem.join(allocator, "/", &.{ home_str, location });
     defer allocator.free(config_path);
 
+    if (config.location == .CONFIG) try Dir.cwd().createDirPath(io, config_path);
+
     const config_dir = try Dir.openDirAbsolute(io, config_path, .{ .iterate = true });
     defer config_dir.close(io);
 
@@ -96,7 +98,10 @@ fn preview_action(config: Config, action: ConfigAction, io: Io, allocator: Alloc
     const home = home_var orelse return error.HomeNotSet;
     const path = try mem.join(allocator, "/", &.{ home, if (config.location == .HOME) "" else ".config" });
     defer allocator.free(path);
-    const dir = try Dir.openDirAbsolute(io, path, .{});
+    const dir = Dir.openDirAbsolute(io, path, .{}) catch |err| switch (err) {
+        error.FileNotFound => return if (action == .install) .link else .skip_missing,
+        else => return err,
+    };
     defer dir.close(io);
 
     // Do not follow links: even a broken symlink occupies the destination.
@@ -355,6 +360,39 @@ test "VM configs are marked and filtered separately from regular configs" {
     try testing.expectEqualStrings("vm i3", i3_contents);
     try testing.expectEqual(@as(usize, 0), try preview_configs(vm, .install, io, allocator));
     try testing.expectError(error.FileNotFound, tmp.dir.statFile(io, ".config/nvim", .{}));
+}
+
+test "normal and VM installs create missing config directory without preview side effects" {
+    const io = testing.io;
+    const allocator = testing.allocator;
+    @import("logger.zig").init_log(io);
+
+    for ([_]bool{ false, true }) |for_vm| {
+        var tmp = testing.tmpDir(.{});
+        defer tmp.cleanup();
+        try tmp.dir.writeFile(io, .{ .sub_path = "source", .data = "config" });
+        const source = try tmp.dir.realPathFileAlloc(io, "source", allocator);
+        defer allocator.free(source);
+        const home = try tmp.dir.realPathFileAlloc(io, ".", allocator);
+        defer allocator.free(home);
+        const previous_home = home_var;
+        home_var = home;
+        defer home_var = previous_home;
+
+        var configs = [_]Config{.{ .name = "app", .absolute_path = source, .for_vm = for_vm }};
+        try testing.expectEqual(@as(usize, 1), try preview_configs(&configs, .install, io, allocator));
+        try testing.expectEqual(@as(usize, 0), try preview_configs(&configs, .remove, io, allocator));
+        try testing.expectError(error.FileNotFound, tmp.dir.statFile(io, ".config", .{}));
+
+        try install_configs(&configs, io, allocator);
+        try testing.expectEqual(.directory, (try tmp.dir.statFile(io, ".config", .{ .follow_symlinks = false })).kind);
+        try testing.expectEqual(.sym_link, (try tmp.dir.statFile(io, ".config/app", .{ .follow_symlinks = false })).kind);
+        const contents = try tmp.dir.readFileAlloc(io, ".config/app", allocator, .limited(100));
+        defer allocator.free(contents);
+        try testing.expectEqualStrings("config", contents);
+        try install_configs(&configs, io, allocator);
+        try testing.expectEqual(@as(usize, 0), try preview_configs(&configs, .install, io, allocator));
+    }
 }
 
 test "VM home and config source directories are independently optional" {

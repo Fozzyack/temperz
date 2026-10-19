@@ -57,12 +57,8 @@ temperz/                   # Run commands from this directory
 ```
 
 Names are preserved exactly, including leading dots. Create both `configs/home/`
-and `configs/configs/`, even if one is empty. Before installing configs, ensure
-the destination directory exists:
-
-```sh
-mkdir -p ~/.config
-```
+and `configs/configs/`, even if one is empty. The destination `~/.config/`
+directory is created automatically when needed during normal and VM installs.
 
 `vm/home/` and `vm/configs/` are independently optional. Put `i3/` directly in
 `vm/configs/`, not inside a `.config/` wrapper: each entry gets its own symlink,
@@ -97,14 +93,14 @@ Installing all configs or dependencies in one environment never installs the oth
 
 - **Install configs:** Symlink files and directories from `configs/home/` into
   `~/`, and from `configs/configs/` into `~/.config/`. Existing paths are skipped;
-  `~/.config/` must already exist.
+  `~/.config/` is created if missing.
 - **Remove configs:** Remove matching paths from `~/` and `~/.config/`, leaving
   symlink targets untouched. Real directories are removed recursively, including
   their contents. Missing paths are skipped. Matching files and directories are
   deleted even when they are not symlinks, so use with care.
 - **Setup VM:** Install one or all configs from `vm/home/` into `~/` and from
   `vm/configs/` into `~/.config/`, using the same preview and confirmation as normal installs.
-  `~/.config/` must already exist. These configs
+  `~/.config/` is created if missing. These configs
   have `for_vm = true` and are excluded from normal installs. Removal lists both
   normal and VM configs. Existing destination paths are skipped, not replaced.
 - **Preview and confirm:** Both config actions show a read-only dry run before
